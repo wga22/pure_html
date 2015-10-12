@@ -7,15 +7,24 @@
 </head>
 
 <body>
-this program will calculate primes up to the entered number
+This program/site will calculate primes up to the entered number.  
+Using multiple threads, the application tests for primes using the "prime factors" method.
 <form>
-<input type="text" name="maxNum" value="10"/>
+Enter a starting value: <input type="text" name="maxNum" value="10000"/>
 <br>
 <input type="button" name="go" onclick="kick()" value="start">
 </form>
-<table border="1" width="80%"><tr><td bgcolor="bisque" width="25%" valign="top"><div name="mainDiv0" id="mainDiv0"></div></td>
+<table border="1" width="80%">
+<tr>
+        <th>Thread 1</th>
+        <th>Thread 2</th>
+        <th>Thread 3</th>
+        <th>Thread 4</th>
+</tr>
+
+<tr><td bgcolor="lightgray" width="25%" valign="top"><div name="mainDiv0" id="mainDiv0"></div></td>
 <td width="25%" valign="top"><div name="mainDiv1" id="mainDiv1"></div></td>
-<td bgcolor="bisque" width="25%" valign="top"><div name="mainDiv2" id="mainDiv2"></div></td>
+<td bgcolor="lightgray" width="25%" valign="top"><div name="mainDiv2" id="mainDiv2"></div></td>
 <td width="25%" valign="top"><div name="mainDiv3" id="mainDiv3"></div></td>
 </tr></table>
 
@@ -24,7 +33,7 @@ this program will calculate primes up to the entered number
 function check(multiplier)
 {
 	var factor=-1;
-	window.status="Working...";
+	//window.status="Working...";
 	// Try each number up to the multiplier
 	for(i=1;i<multiplier;i++)
 	{
@@ -39,6 +48,8 @@ function check(multiplier)
 	if(factor ==-1)
 	{
 		isprime(multiplier);
+                window.status="Prime Found!";
+                setTimeout('setStatusBackToWorking()', 1000);
 		return true
 	}
 	return false;
@@ -71,8 +82,18 @@ function restart()
 	}
 	if(currentNum == maxNum)
 	{
-		window.status="Done!";
+                setTimeout('setStatusBackToDone()', 1200);
 	}
+}
+
+function setStatusBackToWorking()
+{
+     window.status="Working....";   
+}
+
+function setStatusBackToDone()
+{
+     window.status="Done!";  
 }
 </SCRIPT>
 </body>
