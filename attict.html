@@ -1,0 +1,117 @@
+<html>
+  <head>
+  <title>attic temps</title>
+<style type="text/css">
+  body { background-color: #ddd; }
+  #container { height: 95%; width: 100%; display: table; }
+  #inner { vertical-align: middle; display: table-cell; }
+</style>
+	<link href="https://cdn.datatables.net/1.10.9/css/jquery.dataTables.min.css" rel="stylesheet" title="data tables"/>
+
+
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+	<script type="text/javascript" src="https://cdn.datatables.net/1.10.9/js/jquery.dataTables.min.js"></script>
+
+	<script type='text/javascript'>
+
+	//<https://code.jquery.com/jquery-1.10.2.js
+	//#map { width: 360px; height:200px; margin: 0 auto; }
+	// set your channel id here
+	var channel_id = 39741;
+	// set your channel's read api key here if necessary
+	var api_key = 'WE0B76XWWVYWGVH7';
+	var NRESULTS = 1000;
+	// global variables
+	var NMAXWINTERTEMP = 30;	//how hot it needs to be in winter to track
+	var NMAXSUMMERTEMP = 80; // how hot it needs to be in summer to track
+	var NTHRESHOLD = 10;	//some filter to keep low variances out
+	var sTPURL = 'https://api.thingspeak.com/channels/'+channel_id+'/feeds.json?timezone=America%2FNew_York&round=6&results='+NRESULTS+'&api_key='+api_key;
+
+	
+function computeTempDeltas()
+{
+	var oDeltasPerMonth = {};
+	//determine the monthly average daily temperature difference when attic is hotter than outside
+	$.getJSON(sTPURL, function(data)
+	{
+		$.each(data.feeds, function() 
+		{
+			var nAtticT = parseFloat(this["field1"]);	//actual temp
+			var nOutdoorT = parseFloat(this["field3"]); //internet temp
+			var time = new Date(this["created_at"]);
+			//break;
+			//var time = this["created_at"]
+			if(nAtticT && nOutdoorT && nOutdoorT!=-1 )
+			{
+				//winter - figure out how much hotter the attic is staying on cold days - due to furnace wasting heat.
+				//summer - figure how much hotter attic is staying on hot days - due to sun heating
+				if((nOutdoorT <= NMAXWINTERTEMP || nOutdoorT >= NMAXSUMMERTEMP) ) //&& (nOutdoorT+NTHRESHOLD) < nAtticT 
+				{
+					
+					var sYM = time.getFullYear() + "-" + time.getMonth();
+					var nDeltaVal = nAtticT - nOutdoorT;
+					if(!oDeltasPerMonth[sYM])
+					{
+						oDeltasPerMonth[sYM] = {nCnt:1, nDelta:nDeltaVal, attic:nAtticT, outdoor:nOutdoorT};
+					}
+					else
+					{
+						oDeltasPerMonth[sYM] = {
+							nCnt:(oDeltasPerMonth[sYM].nCnt + 1), nDelta:(nDeltaVal + oDeltasPerMonth[sYM].nDelta),
+							outdoor: (nOutdoorT + oDeltasPerMonth[sYM].outdoor), attic:(nAtticT + oDeltasPerMonth[sYM].attic)
+							};
+					}
+				}
+			}
+		})
+	//inside the call
+
+	var aDeltasPerMonth = [];
+	for (var x in oDeltasPerMonth)
+	{
+		var od = oDeltasPerMonth[x];
+		aDeltasPerMonth.push([x, round2(od.outdoor/od.nCnt), round2(od.attic / od.nCnt), round2(od.nDelta / od.nCnt), od.nCnt])
+	}
+
+
+	$('#temp_table').DataTable( {
+        data: aDeltasPerMonth,
+        columns: [
+            { title: "Date" },
+            { title: "Avg. Outdoor" },
+			{ title: "Avg. Attic" },
+			{ title: "Average overheat" },
+            { title: "data points" }
+        ]
+    } );
+
+
+
+	})
+}
+
+ function round2(nNum)
+ {
+	return Math.round(nNum * 100)/100;
+ }
+ function main() 
+ {
+	computeTempDeltas();
+ }
+
+</script>
+</head>
+
+  <body onload="main()">
+  <p>
+	The data in this table indicates the average number of degrees, f, that the attic is hotter than the outdoors, when its over 80 or under 40.
+	<br>
+	The goal is to track this value, and make changes to bring it down by loosing less house heat in the winter, and reducing the heat in the summer.
+	</br>
+	<br>
+	</br>
+	More data details are available on <a href="https://thingspeak.com/channels/39741">ThingSpeak</a>.
+  </p>
+	<table id="temp_table" class="display" width="80%"></table>
+</body>
+</html>

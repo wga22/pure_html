@@ -1,0 +1,171 @@
+<html>
+  <head>
+  <title>TMap</title>
+	<link href="https://cdn.datatables.net/1.10.9/css/jquery.dataTables.min.css" rel="stylesheet" title="data tables"/>
+
+	<style type="text/css">
+	  body { background-color: #ddd; }
+	  #container { height: 95%; width: 100%; display: table; }
+	  #inner { vertical-align: middle; display: table-cell; }
+	  #map { width: 100%; height:100%; margin: 0 auto; }
+	</style>
+
+	<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+	<script type="text/javascript" src="https://cdn.datatables.net/1.10.9/js/jquery.dataTables.min.js"></script>
+	<script async defer
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCg7dti-2ObZtnU9z_-5teyfyLCUajMur4&signed_in=true&callback=initMap"></script>
+	<script type='text/javascript'>
+
+	//<https://code.jquery.com/jquery-1.10.2.js
+	//#map { width: 360px; height:200px; margin: 0 auto; }
+	// set your channel id here
+	var channel_id = 39919;
+	// set your channel's read api key here if necessary
+	var api_key = 'FSOH5JIDQ8N52Q3V';
+	var NRESULTS = 10;
+	// global variables
+	var map, data, previousLoc = {lat:0,lng:0}, nCount=0;
+	var hPrevLoc = {};
+	var sImagePath = "./images/";
+	var sCurrentFlagIcon = 'http://integrativedryneedling.com/wp-content/plugins/mappress-google-maps-for-wordpress/pro/standard_icons/green-dot.png';
+	var sTPURL = 'https://api.thingspeak.com/channels/39919/feeds.json?timezone=America%2FNew_York&round=6&results=100&api_key=FSOH5JIDQ8N52Q3V';
+	var oIcons = {0:"stopped.png", 1:"car_01.png", 2:"car_02.png", 3:"car_03.png",
+				  4:"car_04.png", 5:"car_05.png", 5:"car_05.png",
+				  6:"car_06.png", 7:"car_07.png", 8:"car_08.png",
+				  9:"car_09.png", 10:"car_10.png", 
+				  stopped:"stopped.png", moving:"moving.png"}
+	
+function loadFeed()
+{
+	$.getJSON(sTPURL, function(data)
+	{
+		var nCnt = 0;
+		var oMarkers = {};
+		var hPrevLoc = {};
+		$.each(data.feeds, function() 
+		{
+			var nLat = parseFloat(this["field7"]);
+			var nLng = parseFloat(this["field8"]);
+			var nSpeed = parseFloat(this["field2"]);
+			//break;
+			if(nLat && nLng  )
+			{
+				var sLoc = Math.round(nLat*1000)+""+Math.round(nLng*1000);
+				if(oMarkers[sLoc])
+				{
+					oMarkers[sLoc].nCnt = oMarkers[sLoc].nCnt+1;
+				}
+				else
+				{
+					oMarkers[sLoc] = {position:{lat: nLat, lng: nLng}, title:this["created_at"], speed: nSpeed, nCnt:1};
+				}
+			}
+		})
+		
+		for(var x in oMarkers)
+		{
+			var oMark = oMarkers[x];
+			if(oMark.speed > 0)
+			{
+				var marker = new google.maps.Marker({
+					map: map,
+					icon: sImagePath + oIcons["moving"],
+					position: oMark.position,
+					title: oMark.title + " moving:" + oMark.speed
+					});
+			}
+			else if(oMark.nCnt > 10)
+			{
+				var marker = new google.maps.Marker({
+					map: map,
+					icon: sImagePath + oIcons[10],
+					position: oMark.position,
+					title: oMark.title
+					});
+			}
+			else
+			{
+				var marker = new google.maps.Marker({
+					map: map,
+					icon: sImagePath + oIcons[oMark.nCnt],
+					position: oMark.position,
+					title: oMark.title
+					});
+			}
+		}
+	})
+}
+
+function computeAge()
+{
+	var sURL = 'https://api.thingspeak.com/channels/39919/feeds.json?timescale=daily&round=6&results=3000&api_key=FSOH5JIDQ8N52Q3V';
+	$.getJSON(sURL, 
+	function(data)
+	{
+		var items = [];
+		var nPrev = 260;
+		var nPrevE = 240;
+		var SKIPDAYS=0;
+		var nSkipper = SKIPDAYS;
+	$.each(data.feeds, function() 
+	{
+		var nIdealRange = parseFloat(this["field6"]);
+        var nEstRange = parseFloat(this["field5"]);
+		var nBattLevel = parseFloat(this["field1"]);
+		if(nBattLevel && nIdealRange && (nSkipper++ == SKIPDAYS)  )
+		{
+			nSkipper=0;
+			//alert("lat:" + nLat + " long:" + nLng);
+			var nPer = nIdealRange / (nBattLevel*.01);
+			var nPerE = nEstRange / (nBattLevel*.01);
+			var sLoss = Math.round( 100 * (nPrev-nPer)/nPer )+"%"
+			var sLossE = Math.round( 100 * (nPrevE-nPerE)/nPerE )+"%"
+			var sDate = (this["created_at"] + "").substring(0,10);
+			items.push( [sDate,Math.round(nPer), Math.round(nPerE), sLoss, sLossE] );
+			nPrev = nPer;
+			nPrevE = nPerE;
+			//alert(nPer);
+		}
+	})
+
+	   $('#batteryTable').DataTable( {
+        data: items,
+        columns: [
+            { title: "Date" },
+            { title: "Ideal Range" },
+            { title: "Est. Range" },
+            { title: "ir loss" },
+            { title: "ER Loss" }
+        ]
+    } );
+	})
+	
+
+	
+}
+
+ function initMap() 
+ {
+  // Create a map object and specify the DOM element for display.
+  map = new google.maps.Map(document.getElementById('map'), {
+    center: {lat: 38.92, lng: -77.27879},
+    scrollwheel: true,
+    zoom: 9
+  });
+  loadFeed();
+  computeAge();
+}
+
+</script>
+</head>
+
+  <body>
+    <div id="container">
+      <div id="inner">
+        <div id="map"></div>
+      </div>
+    </div>
+	<div id="lifetime"></div>
+	<table id="batteryTable" class="display" width="80%"></table>
+	</body>
+</html>
