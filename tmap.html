@@ -2,12 +2,12 @@
   <head>
   <title>TMap</title>
 	<link href="https://cdn.datatables.net/1.10.9/css/jquery.dataTables.min.css" rel="stylesheet" title="data tables"/>
-
+	<!-- <base href="http://willallencoding.scienceontheweb.net/"></base> -->
 	<style type="text/css">
 	  body { background-color: #ddd; }
-	  #container { height: 95%; width: 100%; display: table; }
+	  #container { height: 80%; width: 100%; display: table; }
 	  #inner { vertical-align: middle; display: table-cell; }
-	  #map { width: 100%; height:100%; margin: 0 auto; }
+	  #map { width: 100%; height:80%; margin: 0 auto; }
 	</style>
 
 	<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
@@ -98,51 +98,97 @@ function loadFeed()
 
 function computeAge()
 {
-	var sURL = 'https://api.thingspeak.com/channels/39919/feeds.json?timescale=daily&round=6&results=3000&api_key=FSOH5JIDQ8N52Q3V';
+/*
+Valid parameters:
+api_key (string) Read API Key for this specific Channel (optional--no key required for public channels)
+results (integer) Number of entries to retrieve, 8000 max, default of 100 (optional)
+days (integer) Number of 24-hour periods before now to include in feed (optional)
+start (datetime) Start date in format YYYY-MM-DD%20HH:NN:SS (optional)
+end (datetime) End date in format YYYY-MM-DD%20HH:NN:SS (optional)
+timezone (string) Timezone identifier for this request (optional)
+offset (integer) Timezone offset that results should be displayed in. Please use the timezone parameter for greater accuracy. (optional)
+status (true/false) Include status updates in feed by setting "status=true" (optional)
+metadata (true/false) Include Channel's metadata by setting "metadata=true" (optional)
+location (true/false) Include latitude, longitude, and elevation in feed by setting "location=true" (optional)
+min (decimal) Minimum value to include in response (optional)
+max (decimal) Maximum value to include in response (optional)
+round (integer) Round to this many decimal places (optional)
+-----timescale (integer or string) Get first value in this many minutes, valid values: 10, 15, 20, 30, 60, 240, 720, 1440, "daily" (optional)
+sum (integer or string) Get sum of this many minutes, valid values: 10, 15, 20, 30, 60, 240, 720, 1440, "daily" (optional)
+average (integer or string) Get average of this many minutes, valid values: 10, 15, 20, 30, 60, 240, 720, 1440, "daily" (optional)
+median (integer or string) Get median of this many minutes, valid values: 10, 15, 20, 30, 60, 240, 720, 1440, "daily" (optional)
+callback (string) Function name to be used for JSONP cross-domain requests (optional)
+*/
+
+	var sURL = 'https://api.thingspeak.com/channels/39919/feeds.json?location=false&status=false&timescale=daily&round=6&results=3000&api_key=FSOH5JIDQ8N52Q3V';
 	$.getJSON(sURL, 
 	function(data)
 	{
-		var items = [];
-		var nPrev = 260;
+		
+		var nPrevI = 260;
 		var nPrevE = 240;
-		var SKIPDAYS=0;
-		var nSkipper = SKIPDAYS;
+		var SKIPDAYS=3;
+		var nSkipper = 0;
+		var oAvgIdeal = {sum:0, cnt:0};
+		var oAvgEst = {sum:0, cnt:0};
+		var items = [[" - Initial", nPrevI, nPrevE, "N/A", "N/A"]];
 	$.each(data.feeds, function() 
 	{
 		var nIdealRange = parseFloat(this["field6"]);
         var nEstRange = parseFloat(this["field5"]);
 		var nBattLevel = parseFloat(this["field1"]);
-		if(nBattLevel && nIdealRange && (nSkipper++ == SKIPDAYS)  )
+		//check if valid
+		if(nBattLevel && nIdealRange && nBattLevel)	//all should be non-0 and !NAN
 		{
-			nSkipper=0;
-			//alert("lat:" + nLat + " long:" + nLng);
-			var nPer = nIdealRange / (nBattLevel*.01);
-			var nPerE = nEstRange / (nBattLevel*.01);
-			var sLoss = Math.round( 100 * (nPrev-nPer)/nPer )+"%"
-			var sLossE = Math.round( 100 * (nPrevE-nPerE)/nPerE )+"%"
-			var sDate = (this["created_at"] + "").substring(0,10);
-			items.push( [sDate,Math.round(nPer), Math.round(nPerE), sLoss, sLossE] );
-			nPrev = nPer;
-			nPrevE = nPerE;
-			//alert(nPer);
+			//write a record every "interval" - SKIPDAYS, otherwise take average
+			oAvgIdeal.sum =  oAvgIdeal.sum + getRange(nIdealRange, nBattLevel);
+			oAvgIdeal.cnt = oAvgIdeal.cnt + 1;
+
+			oAvgEst.sum =  oAvgEst.sum + getRange(nEstRange, nBattLevel);
+			oAvgEst.cnt = oAvgEst.cnt + 1;
+
+			if((nSkipper++ == SKIPDAYS) )
+			{
+				nSkipper=0;
+				var nPerI = oAvgIdeal.sum / oAvgIdeal.cnt;
+				var nPerE = oAvgEst.sum / oAvgEst.cnt
+				var sLossI = round2(100 * (nPrevI-nPerI)/nPerI)+"%"
+				var sLossE = round2( 100 * (nPrevE-nPerE)/nPerE )+"%"
+				var sDate = (this["created_at"] + "").substring(0,10);
+				items.push( [sDate,round2(nPerI), round2(nPerE), sLossI, sLossE] );
+			
+				//hold the previous values
+				nPrevI = nPerI;
+				nPrevE = nPerE;
+				
+				//reset averages
+				oAvgIdeal = {sum:0, cnt:0};
+				oAvgEst = {sum:0, cnt:0};
+			}
 		}
 	})
 
 	   $('#batteryTable').DataTable( {
         data: items,
         columns: [
-            { title: "Date" },
+            { title: "Date - ("+SKIPDAYS+") day averages"  },
             { title: "Ideal Range" },
             { title: "Est. Range" },
-            { title: "ir loss" },
-            { title: "ER Loss" }
+            { title: "Ideal Range loss" },
+            { title: "Estimated Range Loss" }
         ]
     } );
 	})
-	
-
-	
 }
+
+	function round2(dVal)
+	{
+		return Math.round( 100 * dVal )/100;
+	}
+	function getRange(nCurrRange, nLevel)
+	{
+		return nCurrRange / (nLevel*.01);
+	}
 
  function initMap() 
  {
@@ -160,12 +206,7 @@ function computeAge()
 </head>
 
   <body>
-    <div id="container">
-      <div id="inner">
-        <div id="map"></div>
-      </div>
-    </div>
-	<div id="lifetime"></div>
-	<table id="batteryTable" class="display" width="80%"></table>
+    <div id="map"></div>
+	<div id="rangeTable"><table id="batteryTable" class="display" width="80%"></table></div>
 	</body>
 </html>
