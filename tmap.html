@@ -22,13 +22,12 @@
 	var channel_id = 39919;
 	// set your channel's read api key here if necessary
 	var api_key = 'FSOH5JIDQ8N52Q3V';
-	var NRESULTS = 10;
+	var NRESULTS = 2000;
 	// global variables
 	var map, data, previousLoc = {lat:0,lng:0}, nCount=0;
-	var hPrevLoc = {};
 	var sImagePath = "./images/";
-	var sCurrentFlagIcon = 'http://integrativedryneedling.com/wp-content/plugins/mappress-google-maps-for-wordpress/pro/standard_icons/green-dot.png';
-	var sTPURL = 'https://api.thingspeak.com/channels/39919/feeds.json?timezone=America%2FNew_York&round=6&results=100&api_key=FSOH5JIDQ8N52Q3V';
+	var sTPURL = 'https://api.thingspeak.com/channels/39919/feeds.json?timezone=America%2FNew_York&round=6&results='
+		+NRESULTS + '&api_key=FSOH5JIDQ8N52Q3V';
 	var oIcons = {0:"stopped.png", 1:"car_01.png", 2:"car_02.png", 3:"car_03.png",
 				  4:"car_04.png", 5:"car_05.png", 5:"car_05.png",
 				  6:"car_06.png", 7:"car_07.png", 8:"car_08.png",
@@ -40,18 +39,32 @@ function loadFeed()
 	$.getJSON(sTPURL, function(data)
 	{
 		var nCnt = 0;
+		var nMarkersDrawn= 0;
+		var nDataPoints = 0;
+		var nMaxSpeed = 0;
 		var oMarkers = {};
 		var sLastLocation = "";
+		var ntBegin = Date.now();	//look for earlest date, starting with now
+		var ntEnd = 0;	//look for latest date, starting with something early
 		$.each(data.feeds, function() 
 		{
 			var nLat = parseFloat(this["field7"]);
 			var nLng = parseFloat(this["field8"]);
 			var nSpeed = parseFloat(this["field2"]);
+			nSpeed = (nSpeed) ? nSpeed : 0;
+			nMaxSpeed = Math.max(nSpeed, nMaxSpeed);
+			
+			var oDate = new Date(this["created_at"]);
+			var nTime = oDate.getTime();
+			if(nTime < ntBegin){ntBegin = nTime}
+			if(nTime > ntEnd){ntEnd = nTime}
+			
 			//break;
 			if(nLat && nLng  )
 			{
 				var sLoc = Math.round(nLat*1000)+""+Math.round(nLng*1000);
 				sLastLocation = sLoc;
+				nDataPoints++;
 				if(oMarkers[sLoc])
 				{
 					oMarkers[sLoc].nCnt = oMarkers[sLoc].nCnt+1;
@@ -66,6 +79,7 @@ function loadFeed()
 		for(var x in oMarkers)
 		{
 			var oMark = oMarkers[x];
+			nMarkersDrawn++;
 			if(sLastLocation == x)
 			{
 				var marker = new google.maps.Marker({
@@ -103,6 +117,10 @@ function loadFeed()
 					});
 			}
 		}
+		$("#debug").append("<li>Number of Markers:" + nMarkersDrawn + " out of " + nDataPoints 
+			+"<br><b>Note</b> that program only shows unique markers</br></li>");
+		$("#debug").append("<li>Max speed:" + nMaxSpeed +"</li>");
+		$("#debug").append("<li>Date Range:" + (new Date(ntBegin)) + " to " + (new Date(ntEnd)) +"</li>");
 	})
 }
 
@@ -135,8 +153,8 @@ callback (string) Function name to be used for JSONP cross-domain requests (opti
 	function(data)
 	{
 		
-		var nPrevI = 260;
-		var nPrevE = 240;
+		var nPrevI = 276;	//initial rated ideal range
+		var nPrevE = 240;	//initial rated expected range
 		var SKIPDAYS=3;
 		var nSkipper = 0;
 		var oAvgIdeal = {sum:0, cnt:0};
@@ -215,8 +233,9 @@ callback (string) Function name to be used for JSONP cross-domain requests (opti
 </script>
 </head>
 
-  <body>
-    <div id="map"></div>
-	<div id="rangeTable"><table id="batteryTable" class="display" width="80%"></table></div>
+	<body>
+		<div id="map"></div>
+		<div id="rangeTable"><table id="batteryTable" class="display" width="80%"></table></div>
+		<ul id="debug"></ul>
 	</body>
 </html>
