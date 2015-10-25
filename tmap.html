@@ -41,7 +41,7 @@ function loadFeed()
 	{
 		var nCnt = 0;
 		var oMarkers = {};
-		var hPrevLoc = {};
+		var sLastLocation = "";
 		$.each(data.feeds, function() 
 		{
 			var nLat = parseFloat(this["field7"]);
@@ -51,6 +51,7 @@ function loadFeed()
 			if(nLat && nLng  )
 			{
 				var sLoc = Math.round(nLat*1000)+""+Math.round(nLng*1000);
+				sLastLocation = sLoc;
 				if(oMarkers[sLoc])
 				{
 					oMarkers[sLoc].nCnt = oMarkers[sLoc].nCnt+1;
@@ -65,7 +66,16 @@ function loadFeed()
 		for(var x in oMarkers)
 		{
 			var oMark = oMarkers[x];
-			if(oMark.speed > 0)
+			if(sLastLocation == x)
+			{
+				var marker = new google.maps.Marker({
+					map: map,
+					icon: sImagePath + oIcons["stopped"],
+					position: oMark.position,
+					title: oMark.title + " moving:" + oMark.speed
+					});
+			}
+			else if(oMark.speed > 0)
 			{
 				var marker = new google.maps.Marker({
 					map: map,
