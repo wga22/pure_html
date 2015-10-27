@@ -27,7 +27,19 @@
 	var map, data, previousLoc = {lat:0,lng:0}, nCount=0;
 	var sImagePath = "./images/";
 	var sTPURL = 'https://api.thingspeak.com/channels/39919/feeds.json?timezone=America%2FNew_York&round=6&results='
-		+NRESULTS + '&api_key=FSOH5JIDQ8N52Q3V';
+		+NRESULTS + '&api_key=' + api_key;
+	var oFields = {ODOMETER: "field3", IDEAL_RANGE:"field6", ESTIMATED_RANGE:"field5", BATTERY_LEVEL:"field1", LATITUDE:"field7", LONGITUDE:"field8", SPEED:"field2"};
+	/*
+	oFields.ODOMETER
+	oFields.IDEAL_RANGE
+	oFields.ESTIMATED_RANGE
+	oFields.BATTERY_LEVEL
+	oFields.LATITUDE
+	oFields.LONGITUDE
+	oFields.SPEED
+	*/
+	
+	
 	var oIcons = {0:"stopped.png", 1:"car_01.png", 2:"car_02.png", 3:"car_03.png",
 				  4:"car_04.png", 5:"car_05.png", 5:"car_05.png",
 				  6:"car_06.png", 7:"car_07.png", 8:"car_08.png",
@@ -43,14 +55,15 @@ function loadFeed()
 		var nDataPoints = 0;
 		var nMaxSpeed = 0;
 		var oMarkers = {};
+		var oCurrentPosMark = null;
 		var sLastLocation = "";
 		var ntBegin = Date.now();	//look for earlest date, starting with now
 		var ntEnd = 0;	//look for latest date, starting with something early
 		$.each(data.feeds, function() 
 		{
-			var nLat = parseFloat(this["field7"]);
-			var nLng = parseFloat(this["field8"]);
-			var nSpeed = parseFloat(this["field2"]);
+			var nLat = parseFloat(this[oFields.LATITUDE]);
+			var nLng = parseFloat(this[oFields.LONGITUDE]);
+			var nSpeed = parseFloat(this[oFields.SPEED]);
 			nSpeed = (nSpeed) ? nSpeed : 0;
 			nMaxSpeed = Math.max(nSpeed, nMaxSpeed);
 			
@@ -82,12 +95,7 @@ function loadFeed()
 			nMarkersDrawn++;
 			if(sLastLocation == x)
 			{
-				var marker = new google.maps.Marker({
-					map: map,
-					icon: sImagePath + oIcons["stopped"],
-					position: oMark.position,
-					title: oMark.title + " moving:" + oMark.speed
-					});
+				oCurrentPosMark = oMark;
 			}
 			else if(oMark.speed > 0)
 			{
@@ -117,10 +125,24 @@ function loadFeed()
 					});
 			}
 		}
+
+		//draw it last, to be sure it sits OVER any other markers
+		var marker = new google.maps.Marker({
+				map: map,
+				icon: sImagePath + oIcons["stopped"],
+				position: oCurrentPosMark.position,
+				title: oCurrentPosMark.title + " moving:" + oCurrentPosMark.speed
+				});
+
+		var dEarliest = new Date(ntBegin);
+		var dLatest = (new Date(ntEnd));
 		$("#debug").append("<li>Number of Markers:" + nMarkersDrawn + " out of " + nDataPoints 
 			+"<br><b>Note</b> that program only shows unique markers</br></li>");
 		$("#debug").append("<li>Max speed:" + nMaxSpeed +"</li>");
-		$("#debug").append("<li>Date Range:" + (new Date(ntBegin)) + " to " + (new Date(ntEnd)) +"</li>");
+		if(dEarliest && dLatest)
+		{
+			$("#debug").append("<li>Date Range:" + (dEarliest.toDateString()) + " to " + (dLatest.toDateString()) +"</li>");
+		}
 	})
 }
 
@@ -148,23 +170,25 @@ median (integer or string) Get median of this many minutes, valid values: 10, 15
 callback (string) Function name to be used for JSONP cross-domain requests (optional)
 */
 
-	var sURL = 'https://api.thingspeak.com/channels/39919/feeds.json?location=false&status=false&timescale=daily&round=6&results=3000&api_key=FSOH5JIDQ8N52Q3V';
+	var sURL = 'https://api.thingspeak.com/channels/39919/feeds.json?location=false&status=false&timescale=240&round=6&results=3000&api_key=FSOH5JIDQ8N52Q3V';
 	$.getJSON(sURL, 
 	function(data)
 	{
-		
+		var NINTERVALSPERDAY = 6;
 		var nPrevI = 276;	//initial rated ideal range
 		var nPrevE = 240;	//initial rated expected range
 		var SKIPDAYS=3;
+		var nIntervals = SKIPDAYS * NINTERVALSPERDAY;
 		var nSkipper = 0;
 		var oAvgIdeal = {sum:0, cnt:0};
 		var oAvgEst = {sum:0, cnt:0};
-		var items = [[" - Initial", nPrevI, nPrevE, "N/A", "N/A"]];
+		var items = [[" - Initial", nPrevI, "N/A", nPrevE,  "N/A", "0"]];
 	$.each(data.feeds, function() 
 	{
-		var nIdealRange = parseFloat(this["field6"]);
-        var nEstRange = parseFloat(this["field5"]);
-		var nBattLevel = parseFloat(this["field1"]);
+		var nIdealRange = parseFloat(this[oFields.IDEAL_RANGE]);
+		var nOdometer = parseFloat(this[oFields.ODOMETER]);
+        var nEstRange = parseFloat(this[oFields.ESTIMATED_RANGE]);
+		var nBattLevel = parseFloat(this[oFields.BATTERY_LEVEL]);
 		//check if valid
 		if(nBattLevel && nIdealRange && nBattLevel)	//all should be non-0 and !NAN
 		{
@@ -175,7 +199,7 @@ callback (string) Function name to be used for JSONP cross-domain requests (opti
 			oAvgEst.sum =  oAvgEst.sum + getRange(nEstRange, nBattLevel);
 			oAvgEst.cnt = oAvgEst.cnt + 1;
 
-			if((nSkipper++ == SKIPDAYS) )
+			if((nSkipper++ == nIntervals) )
 			{
 				nSkipper=0;
 				var nPerI = oAvgIdeal.sum / oAvgIdeal.cnt;
@@ -183,7 +207,7 @@ callback (string) Function name to be used for JSONP cross-domain requests (opti
 				var sLossI = round2(100 * (nPrevI-nPerI)/nPerI)+"%"
 				var sLossE = round2( 100 * (nPrevE-nPerE)/nPerE )+"%"
 				var sDate = (this["created_at"] + "").substring(0,10);
-				items.push( [sDate,round2(nPerI), round2(nPerE), sLossI, sLossE] );
+				items.push( [sDate,round2(nPerI), sLossI, round2(nPerE), sLossE, round2(nOdometer)] );
 			
 				//hold the previous values
 				nPrevI = nPerI;
@@ -201,9 +225,10 @@ callback (string) Function name to be used for JSONP cross-domain requests (opti
         columns: [
             { title: "Date - ("+SKIPDAYS+") day averages"  },
             { title: "Ideal Range" },
-            { title: "Est. Range" },
             { title: "Ideal Range loss" },
-            { title: "Estimated Range Loss" }
+            { title: "Est. Range" },
+            { title: "Estimated Range Loss" },
+			{ title: "Odometer (miles)" }
         ]
     } );
 	})
