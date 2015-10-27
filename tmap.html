@@ -41,7 +41,7 @@
 	
 	
 	var oIcons = {0:"stopped.png", 1:"car_01.png", 2:"car_02.png", 3:"car_03.png",
-				  4:"car_04.png", 5:"car_05.png", 5:"car_05.png",
+				  4:"car_04.png", 5:"car_05.png", 5:"car_06.png",
 				  6:"car_06.png", 7:"car_07.png", 8:"car_08.png",
 				  9:"car_09.png", 10:"car_10.png", 
 				  stopped:"stopped.png", moving:"moving.png"}
@@ -76,15 +76,24 @@ function loadFeed()
 			if(nLat && nLng  )
 			{
 				var sLoc = Math.round(nLat*1000)+""+Math.round(nLng*1000);
+				var sDateString = oDate.toDateString();
 				sLastLocation = sLoc;
 				nDataPoints++;
 				if(oMarkers[sLoc])
 				{
-					oMarkers[sLoc].nCnt = oMarkers[sLoc].nCnt+1;
+					//only count 1x per day, and dont bother adding more than 10 dates
+					if(!oMarkers[sLoc].hDates[sDateString] && oMarkers[sLoc].nCnt <= 10)	
+					{
+						oMarkers[sLoc].nCnt = oMarkers[sLoc].nCnt+1;
+						oMarkers[sLoc].hDates[sDateString] = true;
+						oMarkers[sLoc].title = oMarkers[sLoc].title + '\n' + sDateString;
+					}
 				}
 				else
 				{
-					oMarkers[sLoc] = {position:{lat: nLat, lng: nLng}, title:this["created_at"], speed: nSpeed, nCnt:1};
+					var ohDates = {};
+					ohDates[sDateString] = true;
+					oMarkers[sLoc] = {position:{lat: nLat, lng: nLng}, title:sDateString, hDates: ohDates, speed: nSpeed, nCnt:1};
 				}
 			}
 		})
@@ -103,7 +112,7 @@ function loadFeed()
 					map: map,
 					icon: sImagePath + oIcons["moving"],
 					position: oMark.position,
-					title: oMark.title + " moving:" + oMark.speed
+					title: oMark.title
 					});
 			}
 			else if(oMark.nCnt > 10)
@@ -170,7 +179,7 @@ median (integer or string) Get median of this many minutes, valid values: 10, 15
 callback (string) Function name to be used for JSONP cross-domain requests (optional)
 */
 
-	var sURL = 'https://api.thingspeak.com/channels/39919/feeds.json?location=false&status=false&timescale=240&round=6&results=3000&api_key=FSOH5JIDQ8N52Q3V';
+	var sURL = 'https://api.thingspeak.com/channels/'+channel_id+'/feeds.json?location=false&status=false&timescale=240&round=6&results=3000&api_key='+api_key;
 	$.getJSON(sURL, 
 	function(data)
 	{
