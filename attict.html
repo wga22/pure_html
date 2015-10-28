@@ -8,7 +8,6 @@
 </style>
 	<link href="https://cdn.datatables.net/1.10.9/css/jquery.dataTables.min.css" rel="stylesheet" title="data tables"/>
 
-
     <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
 	<script type="text/javascript" src="https://cdn.datatables.net/1.10.9/js/jquery.dataTables.min.js"></script>
 
@@ -22,10 +21,11 @@
 	var api_key = 'WE0B76XWWVYWGVH7';
 	var NRESULTS = 1000;
 	// global variables
-	var NMAXWINTERTEMP = 30;	//how hot it needs to be in winter to track
+	var NMAXWINTERTEMP = 40;	//how hot it needs to be in winter to track
 	var NMAXSUMMERTEMP = 80; // how hot it needs to be in summer to track
 	var NTHRESHOLD = 10;	//some filter to keep low variances out
 	var sTPURL = 'https://api.thingspeak.com/channels/'+channel_id+'/feeds.json?timezone=America%2FNew_York&round=6&results='+NRESULTS+'&api_key='+api_key;
+	var oFields = {ATTIC_TEMP: "field1", INTERNET_TEMP:"field3", HUMIDITY: "field2"};
 
 	
 function computeTempDeltas()
@@ -34,10 +34,13 @@ function computeTempDeltas()
 	//determine the monthly average daily temperature difference when attic is hotter than outside
 	$.getJSON(sTPURL, function(data)
 	{
+		$("#winterMax").html(NMAXWINTERTEMP);
+		$("#summerMax").html(NMAXSUMMERTEMP);
 		$.each(data.feeds, function() 
 		{
-			var nAtticT = parseFloat(this["field1"]);	//actual temp
-			var nOutdoorT = parseFloat(this["field3"]); //internet temp
+			var nAtticT = parseFloat(this[oFields.ATTIC_TEMP]);	//actual temp
+			var nOutdoorT = parseFloat(this[oFields.INTERNET_TEMP]); //internet temp
+			var nAtticHumidity = parseFloat(this[oFields.HUMIDITY]); //why not?
 			var time = new Date(this["created_at"]);
 			//break;
 			//var time = this["created_at"]
@@ -47,18 +50,19 @@ function computeTempDeltas()
 				//summer - figure how much hotter attic is staying on hot days - due to sun heating
 				if((nOutdoorT <= NMAXWINTERTEMP || nOutdoorT >= NMAXSUMMERTEMP) ) //&& (nOutdoorT+NTHRESHOLD) < nAtticT 
 				{
-					
 					var sYM = time.getFullYear() + "-" + time.getMonth();
 					var nDeltaVal = nAtticT - nOutdoorT;
+					//start storing data for a new month
 					if(!oDeltasPerMonth[sYM])
 					{
-						oDeltasPerMonth[sYM] = {nCnt:1, nDelta:nDeltaVal, attic:nAtticT, outdoor:nOutdoorT};
+						oDeltasPerMonth[sYM] = {nCnt:1, nDelta:nDeltaVal, attic:nAtticT, outdoor:nOutdoorT, humidity: nAtticHumidity};
 					}
-					else
+					else	//add in the data needed to compute averages for this month
 					{
 						oDeltasPerMonth[sYM] = {
 							nCnt:(oDeltasPerMonth[sYM].nCnt + 1), nDelta:(nDeltaVal + oDeltasPerMonth[sYM].nDelta),
-							outdoor: (nOutdoorT + oDeltasPerMonth[sYM].outdoor), attic:(nAtticT + oDeltasPerMonth[sYM].attic)
+							outdoor: (nOutdoorT + oDeltasPerMonth[sYM].outdoor), attic:(nAtticT + oDeltasPerMonth[sYM].attic),
+							humidity: (nAtticHumidity + oDeltasPerMonth[sYM].humidity)
 							};
 					}
 				}
@@ -67,10 +71,12 @@ function computeTempDeltas()
 	//inside the call
 
 	var aDeltasPerMonth = [];
+	//compute the averages for each month, and write it to a dataset for output to a table.
 	for (var x in oDeltasPerMonth)
 	{
 		var od = oDeltasPerMonth[x];
-		aDeltasPerMonth.push([x, round2(od.outdoor/od.nCnt), round2(od.attic / od.nCnt), round2(od.nDelta / od.nCnt), od.nCnt])
+		aDeltasPerMonth.push([x, round2(od.outdoor/od.nCnt), round2(od.attic / od.nCnt), round2(od.nDelta / od.nCnt),
+			round2(od.humidity / od.nCnt),od.nCnt])
 	}
 
 
@@ -81,12 +87,10 @@ function computeTempDeltas()
             { title: "Avg. Outdoor" },
 			{ title: "Avg. Attic" },
 			{ title: "Average overheat" },
+			{ title: "Average humidity" },
             { title: "data points" }
         ]
     } );
-
-
-
 	})
 }
 
@@ -104,7 +108,8 @@ function computeTempDeltas()
 
   <body onload="main()">
   <p>
-	The data in this table indicates the average number of degrees, f, that the attic is hotter than the outdoors, when its over 80 or under 40.
+	The data in this table indicates the average number of degrees, f, 
+	that the attic is hotter than the outdoors, when its over <span id="summerMax">Loading...</span> or under <span id="winterMax">Loading...</span>.
 	<br>
 	The goal is to track this value, and make changes to bring it down by loosing less house heat in the winter, and reducing the heat in the summer.
 	</br>
