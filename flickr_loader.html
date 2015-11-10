@@ -1,0 +1,46 @@
+<html>
+  <head>
+
+  <title>jsontest</title>
+
+<style type="text/css">
+  body { background-color: #ddd; }
+  #container { height: 100%; width: 100%; display: table; }
+</style>
+
+	<script src="https://code.jquery.com/jquery-1.10.2.js"></script>
+		<script type='text/javascript'>
+
+$(document).on('ready', function() {
+	doImages();
+ });
+
+function doImages()
+{
+  var flickerAPI = "http://api.flickr.com/services/feeds/photos_public.gne?jsoncallback=?";
+  $.getJSON( flickerAPI, {
+    tags: "sailboat",
+    tagmode: "any",
+    format: "json"
+  })
+    .done(function( data ) {
+      $.each( data.items, function( i, item ) 
+	  {
+        $( "<img>" ).attr( "src", item.media.m ).appendTo( "#images" );
+        /*
+		if ( i === 3 ) 
+		{
+          return false;
+        }*/
+      });
+    });
+}
+ 
+</script>  
+</head>
+
+  <body xonload="initMap()">
+	<div id="images"></div>
+  </body>
+</html>
+
