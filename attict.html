@@ -50,7 +50,7 @@ function computeTempDeltas()
 				//summer - figure how much hotter attic is staying on hot days - due to sun heating
 				if((nOutdoorT <= NMAXWINTERTEMP || nOutdoorT >= NMAXSUMMERTEMP) ) //&& (nOutdoorT+NTHRESHOLD) < nAtticT 
 				{
-					var sYM = time.getFullYear() + "-" + time.getMonth();
+					var sYM = time.getFullYear() + "-" + (time.getMonth()+1);
 					var nDeltaVal = nAtticT - nOutdoorT;
 					//start storing data for a new month
 					if(!oDeltasPerMonth[sYM])

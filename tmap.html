@@ -4,7 +4,9 @@
 	<link href="https://cdn.datatables.net/1.10.9/css/jquery.dataTables.min.css" rel="stylesheet" title="data tables"/>
 	<!-- <base href="http://willallencoding.scienceontheweb.net/"></base> -->
 	<style type="text/css">
-	  body { background-color: #ddd; font-family:arial; font-size:12}
+	  body { background-color: #ddd; font-family:arial; font-size:10}
+	  td { font-family:arial; font-size:10}
+	  th { font-family:arial; font-size:10}
 	  #container { height: 80%; width: 100%; display: table; }
 	  #inner { vertical-align: middle; display: table-cell; }
 	  #map { width: 100%; height:80%; margin: 0 auto; }
@@ -26,9 +28,9 @@
 	// global variables
 	var map, data, previousLoc = {lat:0,lng:0}, nCount=0;
 	var sImagePath = "./images/";
-	var sTPURL = 'https://api.thingspeak.com/channels/39919/feeds.json?timezone=America%2FNew_York&round=6&results='
+	var sTPURL = 'https://api.thingspeak.com/channels/'+channel_id+'/feeds.json?timezone=America%2FNew_York&round=6&results='
 		+NRESULTS + '&api_key=' + api_key;
-	var oFields = {ODOMETER: "field3", IDEAL_RANGE:"field6", ESTIMATED_RANGE:"field5", BATTERY_LEVEL:"field1", LATITUDE:"field7", LONGITUDE:"field8", SPEED:"field2"};
+	var oFields = {ODOMETER: "field3", IDEAL_RANGE:"field6", ESTIMATED_RANGE:"field5", BATTERY_LEVEL:"field1", LATITUDE:"field7", LONGITUDE:"field8", SPEED:"field2", VERSION:"status"};
 	/*
 	oFields.ODOMETER
 	oFields.IDEAL_RANGE
@@ -140,7 +142,7 @@ function loadFeed()
 				map: map,
 				icon: sImagePath + oIcons["stopped"],
 				position: oCurrentPosMark.position,
-				title: "Current Location\n" + oCurrentPosMark.title + " moving:" + oCurrentPosMark.speed
+				title: "Current Location\n" + oCurrentPosMark.title + ((oCurrentPosMark.speed>0)?(" speed:" + oCurrentPosMark.speed): " parked")
 				});
 
 		var dEarliest = new Date(ntBegin);
@@ -179,7 +181,8 @@ median (integer or string) Get median of this many minutes, valid values: 10, 15
 callback (string) Function name to be used for JSONP cross-domain requests (optional)
 */
 
-	var sURL = 'https://api.thingspeak.com/channels/'+channel_id+'/feeds.json?location=false&status=false&timescale=240&round=6&results=3000&api_key='+api_key;
+	var sURL = 'https://api.thingspeak.com/channels/'+channel_id+'/feeds.json?location=false&status=true&timescale=240&round=6&results=3000&api_key='+api_key;
+	var oVersions = {};
 	$.getJSON(sURL, 
 	function(data)
 	{
@@ -225,6 +228,10 @@ callback (string) Function name to be used for JSONP cross-domain requests (opti
 				//reset averages
 				oAvgIdeal = {sum:0, cnt:0};
 				oAvgEst = {sum:0, cnt:0};
+				
+				//see if there is a new version
+				var sVersion = this[oFields.VERSION];
+				oVersions[sVersion] = sDate;
 			}
 		}
 	})
@@ -267,6 +274,14 @@ callback (string) Function name to be used for JSONP cross-domain requests (opti
 	
 	$("#debug").append("<li>Overall Est Range Loss: " + fEstRangeLoss +"%."
 		+"  (Current: "+round2(fCurrentRangeAvg)+ " Original: "+ round2(fOriginalRangeAvg) + ")</li>");
+	
+	for(var qq in oVersions)
+	{
+		$("#versions").append("<li>Version: " + qq +" - " + oVersions[qq] + "</li>");
+	}
+
+	oVersions
+	
 	})
 }
 
@@ -305,7 +320,13 @@ callback (string) Function name to be used for JSONP cross-domain requests (opti
 
 	<body>
 		<div id="map"></div>
-		<div id="rangeTable"><table id="batteryTable" class="display" width="80%"></table></div>
+		<div id="rangeTable">
+			<h3>Range Information</h3>
+			<table id="batteryTable" class="display" width="80%"></table>
+		</div>
+		<h3>Miscelaneous Data</h3>
 		<ul id="debug"></ul>
+		<h3>Version information</h3>
+		<ol id="versions"></ol>
 	</body>
 </html>
