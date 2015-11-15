@@ -55,7 +55,7 @@ function loadFeed()
 		var nCnt = 0;
 		var nMarkersDrawn= 0;
 		var nDataPoints = 0;
-		var nMaxSpeed = 0;
+		var oMaxSpeed = {speed: 0, date: (new Date(0))};
 		var oMarkers = {};
 		var oCurrentPosMark = null;
 		var sLastLocation = "";
@@ -66,10 +66,16 @@ function loadFeed()
 			var nLat = parseFloat(this[oFields.LATITUDE]);
 			var nLng = parseFloat(this[oFields.LONGITUDE]);
 			var nSpeed = parseFloat(this[oFields.SPEED]);
-			nSpeed = (nSpeed) ? nSpeed : 0;
-			nMaxSpeed = Math.max(nSpeed, nMaxSpeed);
-			
 			var oDate = new Date(this["created_at"]);
+
+			nSpeed = (nSpeed) ? nSpeed : 0;
+			
+			if(oMaxSpeed.speed < nSpeed)
+			{
+				oMaxSpeed.speed = nSpeed;
+				oMaxSpeed.date = oDate;
+			}
+			
 			var nTime = oDate.getTime();
 			if(nTime < ntBegin){ntBegin = nTime}
 			if(nTime > ntEnd){ntEnd = nTime}
@@ -114,7 +120,7 @@ function loadFeed()
 					map: map,
 					icon: sImagePath + oIcons["moving"],
 					position: oMark.position,
-					title: oMark.title
+					title: (oMark.title + " spd:" + oMark.speed)
 					});
 			}
 			else if(oMark.nCnt > 10)
@@ -149,7 +155,7 @@ function loadFeed()
 		var dLatest = (new Date(ntEnd));
 		$("#debug").append("<li>Number of Markers:" + nMarkersDrawn + " out of " + nDataPoints 
 			+"<br><b>Note</b> that program only shows unique markers</br></li>");
-		$("#debug").append("<li>Max speed:" + nMaxSpeed +"</li>");
+		$("#debug").append("<li>Max speed:" + oMaxSpeed.speed +" date:" + (oMaxSpeed.date) + "</li>");
 		if(dEarliest && dLatest)
 		{
 			$("#debug").append("<li>Date Range:" + (dEarliest.toDateString()) + " to " + (dLatest.toDateString()) +"</li>");
@@ -252,7 +258,7 @@ callback (string) Function name to be used for JSONP cross-domain requests (opti
 	//compute the the average of the early range values and most recent, to see consistency in the losses
 	var oAvgRangeEarly = {sum:0, cnt:0};
 	var oAvgRangeLate = {sum:0, cnt:0};
-	var nRecordsToAverage = 4;
+	var nRecordsToAverage = 5;
 	var nPosOfRangeEstimated = 3;
 	for (var x = items.length-1; x >=0; x-- )
 	{
@@ -261,7 +267,7 @@ callback (string) Function name to be used for JSONP cross-domain requests (opti
 			oAvgRangeEarly.cnt = oAvgRangeEarly.cnt + 1;
 			oAvgRangeEarly.sum = oAvgRangeEarly.sum + items[x][nPosOfRangeEstimated];
 		}
-		if(x > items.length - nRecordsToAverage)
+		if(x > (items.length - nRecordsToAverage))
 		{
 			oAvgRangeLate.cnt = oAvgRangeLate.cnt + 1;
 			oAvgRangeLate.sum = oAvgRangeLate.sum + items[x][nPosOfRangeEstimated];
