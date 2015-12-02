@@ -5,6 +5,8 @@
   body { background-color: #ddd; }
   #container { height: 95%; width: 100%; display: table; }
   #inner { vertical-align: middle; display: table-cell; }
+  .winter { background-color:lightblue;}
+  .summer{ background-color:pink;}
 </style>
 	<link href="https://cdn.datatables.net/1.10.9/css/jquery.dataTables.min.css" rel="stylesheet" title="data tables"/>
 
@@ -28,7 +30,8 @@
 	var MILLISPERMONTH = 31*24*60*60*1000; //days*hours*mins*secs*millis
 	var sTPURL = 'https://api.thingspeak.com/channels/'+channel_id+'/feeds.json?timezone=America%2FNew_York&round=6&results='+NRESULTS+'&api_key='+api_key;
 	var oFields = {ATTIC_TEMP: "field1", INTERNET_TEMP:"field3", HUMIDITY: "field2"};
-	var oDeltasPerMonth = {};
+	var oDeltasPerSummerMonth = {};
+	var oDeltasPerWinterMonth = {};
 	var nLoadedMonths = 1;
 function getDateToTSStringFirstDay(a_oDate)
 {
@@ -82,29 +85,31 @@ function computeTempDeltas()
 				var time = new Date(this["created_at"]);
 				//$('#debug').append("<li>"+nAtticT+"</li>");
 
-				//break;
+
+
 				//var time = this["created_at"]
 				if(nAtticT && nOutdoorT && nOutdoorT!=-1 )
 				{
 					//winter - figure out how much hotter the attic is staying on cold days - due to furnace wasting heat.
 					//summer - figure how much hotter attic is staying on hot days - due to sun heating
-					if((nOutdoorT <= NMAXWINTERTEMP || nOutdoorT >= NMAXSUMMERTEMP) ) //&& (nOutdoorT+NTHRESHOLD) < nAtticT 
+					var sYM = time.getFullYear() + "-" + (time.getMonth()+1);					
+					if(nOutdoorT <= NMAXWINTERTEMP)
 					{
-						var sYM = time.getFullYear() + "-" + (time.getMonth()+1);
-						var nDeltaVal = nAtticT - nOutdoorT;
 						//start storing data for a new month
-						if(!oDeltasPerMonth[sYM])
+						if(!oDeltasPerWinterMonth[sYM])
 						{
-							oDeltasPerMonth[sYM] = {nCnt:1, nDelta:nDeltaVal, attic:nAtticT, outdoor:nOutdoorT, humidity: nAtticHumidity};
+							oDeltasPerWinterMonth[sYM] = new TemperatureResults();
 						}
-						else	//add in the data needed to compute averages for this month
+						oDeltasPerWinterMonth[sYM].addTemperatures(nOutdoorT,nAtticT,nAtticHumidity);
+					}
+					else if( nOutdoorT >= NMAXSUMMERTEMP ) //&& (nOutdoorT+NTHRESHOLD) < nAtticT 
+					{
+						//start storing data for a new month
+						if(!oDeltasPerSummerMonth[sYM])
 						{
-							oDeltasPerMonth[sYM] = {
-								nCnt:(oDeltasPerMonth[sYM].nCnt + 1), nDelta:(nDeltaVal + oDeltasPerMonth[sYM].nDelta),
-								outdoor: (nOutdoorT + oDeltasPerMonth[sYM].outdoor), attic:(nAtticT + oDeltasPerMonth[sYM].attic),
-								humidity: (nAtticHumidity + oDeltasPerMonth[sYM].humidity)
-								};
+							oDeltasPerSummerMonth[sYM] = new TemperatureResults();
 						}
+						oDeltasPerSummerMonth[sYM].addTemperatures(nOutdoorT,nAtticT,nAtticHumidity);
 					}
 				}
 			})
@@ -115,21 +120,21 @@ function computeTempDeltas()
 	}	// for loop
 }
 
-function writeTheValues()
+function writeTheValues(oVals, sTable)
 	{
 	//compute the averages for each month, and write it to a dataset for output to a table.
 	var aDeltasPerMonth = [];
-	for (var x in oDeltasPerMonth)
+	for (var x in oVals)
 	{
 		$('#debug').append("<li>"+x+"</li>");
 		
-		var od = oDeltasPerMonth[x];
-		aDeltasPerMonth.push([x, round2(od.outdoor/od.nCnt), round2(od.attic / od.nCnt), round2(od.nDelta / od.nCnt),
-			round2(od.humidity / od.nCnt),od.nCnt])
+		var od = oVals[x];
+		aDeltasPerMonth.push([x, round2(od.avgOutdoorTemp()), round2(od.avgAtticTemp()), round2(od.avgTempDiff()),
+			round2(od.avgAtticHumidity()),od.nCount])
 	}
 
 	//write out the table
-	$('#temp_table').DataTable( {
+	$(sTable).DataTable( {
         data: aDeltasPerMonth,
         columns: [
             { title: "Date" },
@@ -149,13 +154,22 @@ function writeTheValues()
  
  function waitAndWriteVals()
  {
-	$('#debug').append("<li>waiting..."+nLoadedMonths+"</li>")
-	if(nLoadedMonths == NMONTHSTOLOAD)
+	
+	if(nLoadedMonths >= NMONTHSTOLOAD)
 	{
-		writeTheValues();
+		//writeTheValues();
+		writeTheValues(oDeltasPerSummerMonth, "#summer_temp_table");
+		writeTheValues(oDeltasPerWinterMonth, "#winter_temp_table")
+		/*
+		for(var x in oDeltasPerMonth)
+		{
+			$('#debug').append("<li>"+oDeltasPerMonth[x].avgOutdoorTemp()+"</li>")
+		}
+		*/
 	}
 	else
 	{
+		$('#debug').append("<li>waiting..."+nLoadedMonths+"</li>")
 		setTimeout("waitAndWriteVals()", 2000);
 	}
  }
@@ -169,6 +183,54 @@ function writeTheValues()
 	//setTimeout("writeTheValues()", 20000);
  }
 
+ function TemperatureResults()
+ {
+	this.atTempTotals=0;
+	this.outdoorTempTotals=0;
+	this.humidityTotals = 0;
+	this.diffTotals = 0;
+	this.nCount = 0;
+	
+	//functions
+	this.addTemperatures = _addTemps;
+	this.avgOutdoorTemp = _avgOutdoorTemp;
+	this.avgAtticTemp = _avgAtticTemp;
+	this.avgAtticHumidity = _avgAtticHumidity;
+	this.avgTempDiff = _avgTempDiff;
+	
+	function _average(nSum, nCnt)
+	{
+		return nSum / nCnt;
+	}
+	
+	function _avgTempDiff()
+	{
+		return _average(this.diffTotals, this.nCount)
+	}
+	function _avgAtticHumidity()
+	{
+		return _average(this.humidityTotals,this.nCount)
+	}
+
+	function _avgOutdoorTemp()
+	{
+		return _average(this.outdoorTempTotals,this.nCount)
+	}
+	
+	function _avgAtticTemp()
+	{
+		return _average(this.atTempTotals,this.nCount)
+	}
+	
+	function _addTemps(nOutdoorT, nAtticT, nAtticHumidity)
+	{
+		this.outdoorTempTotals += nOutdoorT;
+		this.atTempTotals += nAtticT;
+		this.humidityTotals += nAtticHumidity;
+		this.diffTotals += Math.abs(nOutdoorT - nAtticT);
+		this.nCount++;
+	}
+ }
  
  /*
    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
@@ -193,7 +255,13 @@ function writeTheValues()
 	</br>
 	More data details are available on <a href="https://thingspeak.com/channels/39741">ThingSpeak</a>.
   </p>
-	<table id="temp_table" class="display" width="80%"></table>
+<div class="summer">Summer Temps
+	<table id="summer_temp_table" class="display" width="80%"></table>
+</div>
+<div class="winter">Winter Temps
+	<table id="winter_temp_table" class="display" width="80%"></table>
+</div>
+
 	<ol id="debug">
 	</ol>
 </body>
