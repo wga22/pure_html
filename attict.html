@@ -19,67 +19,116 @@
 	var channel_id = 39741;
 	// set your channel's read api key here if necessary
 	var api_key = 'WE0B76XWWVYWGVH7';
-	var NRESULTS = 1000;
+	var NRESULTS = 3000;	//number of results to load per month
 	// global variables
+	var NMONTHSTOLOAD = 24;
 	var NMAXWINTERTEMP = 40;	//how hot it needs to be in winter to track
 	var NMAXSUMMERTEMP = 80; // how hot it needs to be in summer to track
 	var NTHRESHOLD = 10;	//some filter to keep low variances out
+	var MILLISPERMONTH = 31*24*60*60*1000; //days*hours*mins*secs*millis
 	var sTPURL = 'https://api.thingspeak.com/channels/'+channel_id+'/feeds.json?timezone=America%2FNew_York&round=6&results='+NRESULTS+'&api_key='+api_key;
 	var oFields = {ATTIC_TEMP: "field1", INTERNET_TEMP:"field3", HUMIDITY: "field2"};
+	var oDeltasPerMonth = {};
+	var nLoadedMonths = 1;
+function getDateToTSStringFirstDay(a_oDate)
+{
+	//YYYY-MM-DD%20HH:NN:SS
+	if(!a_oDate)
+	{
+		a_oDate = new Date();
+	}
+	var sMonth = (a_oDate.getMonth() + 1);
+	sMonth = (sMonth < 10)? ("0"+sMonth) : (sMonth + "");
+	return (a_oDate.getFullYear()+0) + "-" + sMonth + "-01%2000:00:00"
+}
 
-	
+function getPreviousMonth(a_oDatePrev)
+{
+	var nMonth = a_oDatePrev.getMonth();
+	if(nMonth>0)
+	{
+		a_oDatePrev.setMonth(nMonth-1);
+	}
+	else
+	{
+		a_oDatePrev.setYear(a_oDatePrev.getYear()-1)
+	}
+	return a_oDatePrev;
+}
+
 function computeTempDeltas()
 {
-	var oDeltasPerMonth = {};
 	//determine the monthly average daily temperature difference when attic is hotter than outside
-	$.getJSON(sTPURL, function(data)
+	
+	var oDateAtEnd = new Date();
+	oDateAtEnd.setMonth(oDateAtEnd.getMonth()+1);	//increment the date one month forward
+	var sStopDate = getDateToTSStringFirstDay(oDateAtEnd);
+	for(var x=0; x < NMONTHSTOLOAD; x++)
 	{
-		$("#winterMax").html(NMAXWINTERTEMP);
-		$("#summerMax").html(NMAXSUMMERTEMP);
-		$.each(data.feeds, function() 
+		//  start (datetime) Start date in format YYYY-MM-DD%20HH:NN:SS (optional) (stop is the same)
+		oDateAtEnd.setMonth(oDateAtEnd.getMonth()-1);
+		var sStartDate = getDateToTSStringFirstDay(oDateAtEnd);
+		var sTPURLbyDate =  sTPURL+ "&start=" + sStartDate + "&stop=" + sStopDate;
+		sStopDate = sStartDate;
+		
+		//$('#debug').append("<li>"+sTPURLbyDate+"</li>")
+		$.getJSON(sTPURLbyDate, function(data)
 		{
-			var nAtticT = parseFloat(this[oFields.ATTIC_TEMP]);	//actual temp
-			var nOutdoorT = parseFloat(this[oFields.INTERNET_TEMP]); //internet temp
-			var nAtticHumidity = parseFloat(this[oFields.HUMIDITY]); //why not?
-			var time = new Date(this["created_at"]);
-			//break;
-			//var time = this["created_at"]
-			if(nAtticT && nOutdoorT && nOutdoorT!=-1 )
+			$.each(data.feeds, function() 
 			{
-				//winter - figure out how much hotter the attic is staying on cold days - due to furnace wasting heat.
-				//summer - figure how much hotter attic is staying on hot days - due to sun heating
-				if((nOutdoorT <= NMAXWINTERTEMP || nOutdoorT >= NMAXSUMMERTEMP) ) //&& (nOutdoorT+NTHRESHOLD) < nAtticT 
+				var nAtticT = parseFloat(this[oFields.ATTIC_TEMP]);	//actual temp
+				var nOutdoorT = parseFloat(this[oFields.INTERNET_TEMP]); //internet temp
+				var nAtticHumidity = parseFloat(this[oFields.HUMIDITY]); //why not?
+				var time = new Date(this["created_at"]);
+				//$('#debug').append("<li>"+nAtticT+"</li>");
+
+				//break;
+				//var time = this["created_at"]
+				if(nAtticT && nOutdoorT && nOutdoorT!=-1 )
 				{
-					var sYM = time.getFullYear() + "-" + (time.getMonth()+1);
-					var nDeltaVal = nAtticT - nOutdoorT;
-					//start storing data for a new month
-					if(!oDeltasPerMonth[sYM])
+					//winter - figure out how much hotter the attic is staying on cold days - due to furnace wasting heat.
+					//summer - figure how much hotter attic is staying on hot days - due to sun heating
+					if((nOutdoorT <= NMAXWINTERTEMP || nOutdoorT >= NMAXSUMMERTEMP) ) //&& (nOutdoorT+NTHRESHOLD) < nAtticT 
 					{
-						oDeltasPerMonth[sYM] = {nCnt:1, nDelta:nDeltaVal, attic:nAtticT, outdoor:nOutdoorT, humidity: nAtticHumidity};
-					}
-					else	//add in the data needed to compute averages for this month
-					{
-						oDeltasPerMonth[sYM] = {
-							nCnt:(oDeltasPerMonth[sYM].nCnt + 1), nDelta:(nDeltaVal + oDeltasPerMonth[sYM].nDelta),
-							outdoor: (nOutdoorT + oDeltasPerMonth[sYM].outdoor), attic:(nAtticT + oDeltasPerMonth[sYM].attic),
-							humidity: (nAtticHumidity + oDeltasPerMonth[sYM].humidity)
-							};
+						var sYM = time.getFullYear() + "-" + (time.getMonth()+1);
+						var nDeltaVal = nAtticT - nOutdoorT;
+						//start storing data for a new month
+						if(!oDeltasPerMonth[sYM])
+						{
+							oDeltasPerMonth[sYM] = {nCnt:1, nDelta:nDeltaVal, attic:nAtticT, outdoor:nOutdoorT, humidity: nAtticHumidity};
+						}
+						else	//add in the data needed to compute averages for this month
+						{
+							oDeltasPerMonth[sYM] = {
+								nCnt:(oDeltasPerMonth[sYM].nCnt + 1), nDelta:(nDeltaVal + oDeltasPerMonth[sYM].nDelta),
+								outdoor: (nOutdoorT + oDeltasPerMonth[sYM].outdoor), attic:(nAtticT + oDeltasPerMonth[sYM].attic),
+								humidity: (nAtticHumidity + oDeltasPerMonth[sYM].humidity)
+								};
+						}
 					}
 				}
-			}
-		})
-	//inside the call
+			})
+			//inside the call
+			nLoadedMonths++;
+		}	
+		) //getJSON
+	}	// for loop
+}
 
-	var aDeltasPerMonth = [];
+function writeTheValues()
+	{
 	//compute the averages for each month, and write it to a dataset for output to a table.
+	var aDeltasPerMonth = [];
 	for (var x in oDeltasPerMonth)
 	{
+		$('#debug').append("<li>"+x+"</li>");
+		
 		var od = oDeltasPerMonth[x];
 		aDeltasPerMonth.push([x, round2(od.outdoor/od.nCnt), round2(od.attic / od.nCnt), round2(od.nDelta / od.nCnt),
 			round2(od.humidity / od.nCnt),od.nCnt])
 	}
 
-
+	//write out the table
 	$('#temp_table').DataTable( {
         data: aDeltasPerMonth,
         columns: [
@@ -91,18 +140,37 @@ function computeTempDeltas()
             { title: "data points" }
         ]
     } );
-	})
 }
 
  function round2(nNum)
  {
 	return Math.round(nNum * 100)/100;
  }
+ 
+ function waitAndWriteVals()
+ {
+	$('#debug').append("<li>waiting..."+nLoadedMonths+"</li>")
+	if(nLoadedMonths == NMONTHSTOLOAD)
+	{
+		writeTheValues();
+	}
+	else
+	{
+		setTimeout("waitAndWriteVals()", 2000);
+	}
+ }
  function main() 
  {
+	$("#winterMax").html(NMAXWINTERTEMP);
+	$("#summerMax").html(NMAXSUMMERTEMP);
 	computeTempDeltas();
+	waitAndWriteVals();
+	//setTimeout("waitAndWriteVals()", 20000);
+	//setTimeout("writeTheValues()", 20000);
  }
 
+ 
+ /*
    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
   (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
   m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
@@ -110,7 +178,7 @@ function computeTempDeltas()
 
   ga('create', 'UA-550134-9', 'scienceontheweb.net');
   ga('send', 'pageview');
- 
+ */
 </script>
 </head>
 
@@ -126,5 +194,7 @@ function computeTempDeltas()
 	More data details are available on <a href="https://thingspeak.com/channels/39741">ThingSpeak</a>.
   </p>
 	<table id="temp_table" class="display" width="80%"></table>
+	<ol id="debug">
+	</ol>
 </body>
 </html>
