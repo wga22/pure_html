@@ -45,20 +45,6 @@ function getDateToTSStringFirstDay(a_oDate)
 	return (a_oDate.getFullYear()+0) + "-" + sMonth + "-01%2000:00:00"
 }
 
-function getPreviousMonth(a_oDatePrev)
-{
-	var nMonth = a_oDatePrev.getMonth();
-	if(nMonth>0)
-	{
-		a_oDatePrev.setMonth(nMonth-1);
-	}
-	else
-	{
-		a_oDatePrev.setYear(a_oDatePrev.getYear()-1)
-	}
-	return a_oDatePrev;
-}
-
 function computeTempDeltas()
 {
 	//determine the monthly average daily temperature difference when attic is hotter than outside

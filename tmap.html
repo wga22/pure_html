@@ -187,26 +187,24 @@ median (integer or string) Get median of this many minutes, valid values: 10, 15
 callback (string) Function name to be used for JSONP cross-domain requests (optional)
 */
 
-	var sURL = 'https://api.thingspeak.com/channels/'+channel_id+'/feeds.json?location=false&status=true&timescale=240&round=6&results=3000&api_key='+api_key;
-	var oVersions = {};
+	var sURL = 'https://api.thingspeak.com/channels/'+channel_id+'/feeds.json?location=false&status=true&timescale=720&round=6&results=8000&api_key='+api_key;
 	$.getJSON(sURL, 
 	function(data)
 	{
-		var NINTERVALSPERDAY = 6;
 		var nPrevI = 276;	//initial rated ideal range
 		var nPrevE = 240;	//initial rated expected range
-		var SKIPDAYS=3;
-		var nIntervals = SKIPDAYS * NINTERVALSPERDAY;
-		var nSkipper = 0;
+		var sMonth = '';
 		var oAvgIdeal = {sum:0, cnt:0};
+		var nOdometerDifference = 0;
 		var oAvgEst = {sum:0, cnt:0};
-		var items = [[" - Initial", nPrevI, "N/A", nPrevE,  "N/A", "0"]];
+		var items = [[" - Initial", nPrevI, "N/A", nPrevE,  "N/A", "0", "0", "0"]];
 	$.each(data.feeds, function() 
 	{
 		var nIdealRange = parseFloat(this[oFields.IDEAL_RANGE]);
 		var nOdometer = parseFloat(this[oFields.ODOMETER]);
         var nEstRange = parseFloat(this[oFields.ESTIMATED_RANGE]);
 		var nBattLevel = parseFloat(this[oFields.BATTERY_LEVEL]);
+		var sVersion = this[oFields.VERSION] ? this[oFields.VERSION] : "";
 		//check if valid
 		if(nBattLevel && nIdealRange && nBattLevel)	//all should be non-0 and !NAN
 		{
@@ -214,18 +212,22 @@ callback (string) Function name to be used for JSONP cross-domain requests (opti
 			oAvgIdeal.sum =  oAvgIdeal.sum + getRange(nIdealRange, nBattLevel);
 			oAvgIdeal.cnt = oAvgIdeal.cnt + 1;
 
+			var time = new Date(this["created_at"]);
+			var sCurrMonth = time.getFullYear() + "-" + (time.getMonth()+1);
+
 			oAvgEst.sum =  oAvgEst.sum + getRange(nEstRange, nBattLevel);
 			oAvgEst.cnt = oAvgEst.cnt + 1;
 
-			if((nSkipper++ == nIntervals) )
+			if((sMonth != sCurrMonth) )
 			{
-				nSkipper=0;
+				sMonth = sCurrMonth;
 				var nPerI = oAvgIdeal.sum / oAvgIdeal.cnt;
 				var nPerE = oAvgEst.sum / oAvgEst.cnt
 				var sLossI = round2(100 * (nPrevI-nPerI)/nPerI)+"%"
 				var sLossE = round2( 100 * (nPrevE-nPerE)/nPerE )+"%"
-				var sDate = (this["created_at"] + "").substring(0,10);
-				items.push( [sDate,round2(nPerI), sLossI, round2(nPerE), sLossE, round2(nOdometer)] );
+				//var sDate = (this["created_at"] + "").substring(0,10);
+				items.push( [sCurrMonth,round2(nPerI), sLossI, round2(nPerE), sLossE, round2(nOdometer), 
+					round2(nOdometer-nOdometerDifference), sVersion] );
 			
 				//hold the previous values
 				nPrevI = nPerI;
@@ -235,9 +237,7 @@ callback (string) Function name to be used for JSONP cross-domain requests (opti
 				oAvgIdeal = {sum:0, cnt:0};
 				oAvgEst = {sum:0, cnt:0};
 				
-				//see if there is a new version
-				var sVersion = this[oFields.VERSION];
-				oVersions[sVersion] = sDate;
+				nOdometerDifference = nOdometer;
 			}
 		}
 	})
@@ -245,12 +245,14 @@ callback (string) Function name to be used for JSONP cross-domain requests (opti
 	   $('#batteryTable').DataTable( {
         data: items,
         columns: [
-            { title: "Date - ("+SKIPDAYS+") day averages"  },
+            { title: "Year Month"  },
             { title: "Ideal Range" },
             { title: "Ideal Range loss" },
             { title: "Est. Range" },
             { title: "Estimated Range Loss" },
-			{ title: "Odometer (miles)" }
+			{ title: "Odometer (miles)" },
+			{ title: "Miles Driven" },
+			{ title: "Version" }
         ]
     } );
 	
@@ -280,13 +282,6 @@ callback (string) Function name to be used for JSONP cross-domain requests (opti
 	
 	$("#debug").append("<li>Overall Est Range Loss: " + fEstRangeLoss +"%."
 		+"  (Current: "+round2(fCurrentRangeAvg)+ " Original: "+ round2(fOriginalRangeAvg) + ")</li>");
-	
-	for(var qq in oVersions)
-	{
-		$("#versions").append("<li>Version: " + qq +" - " + oVersions[qq] + "</li>");
-	}
-
-	oVersions
 	
 	})
 }
@@ -332,7 +327,5 @@ callback (string) Function name to be used for JSONP cross-domain requests (opti
 		</div>
 		<h3>Miscelaneous Data</h3>
 		<ul id="debug"></ul>
-		<h3>Version information</h3>
-		<ol id="versions"></ol>
 	</body>
 </html>
