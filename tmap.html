@@ -1,3 +1,4 @@
+
 <html>
   <head>
   <title>TMap</title>
@@ -18,6 +19,15 @@
         src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCg7dti-2ObZtnU9z_-5teyfyLCUajMur4&signed_in=true&callback=initMap"></script>
 	<script type='text/javascript'>
 
+
+	Array.prototype.average = function () {
+		var sum = 0, j = 0; 
+	   for (var i = 0; i < this.length, isFinite(this[i]); i++) { 
+			  sum += parseFloat(this[i]); ++j; 
+		} 
+	   return j ? sum / j : 0; 
+	};	
+	
 	//<https://code.jquery.com/jquery-1.10.2.js
 	//#map { width: 360px; height:200px; margin: 0 auto; }
 	// set your channel id here
@@ -25,6 +35,9 @@
 	// set your channel's read api key here if necessary
 	var api_key = 'FSOH5JIDQ8N52Q3V';
 	var NRESULTS = 2000;
+	var InitialRatedIdealRange = 276;	//initial rated ideal range
+	var InitialRatedExpectedRange = 240;	//initial rated expected range
+
 	// global variables
 	var map, data, previousLoc = {lat:0,lng:0}, nCount=0;
 	var sImagePath = "./images/";
@@ -47,6 +60,7 @@
 				  6:"car_06.png", 7:"car_07.png", 8:"car_08.png",
 				  9:"car_09.png", 10:"car_10.png", 
 				  stopped:"stopped.png", moving:"moving.png"}
+
 	
 function loadFeed()
 {
@@ -190,44 +204,58 @@ callback (string) Function name to be used for JSONP cross-domain requests (opti
 	var sURL = 'https://api.thingspeak.com/channels/'+channel_id+'/feeds.json?location=false&status=true&timescale=720&round=6&results=8000&api_key='+api_key;
 	$.getJSON(sURL, 
 	function(data)
-	{
-		var nPrevI = 276;	//initial rated ideal range
-		var nPrevE = 240;	//initial rated expected range
-		var sMonth = '';
-		var oAvgIdeal = {sum:0, cnt:0};
-		var nOdometerDifference = 0;
-		var oAvgEst = {sum:0, cnt:0};
-		var items = [[" - Initial", nPrevI, "N/A", nPrevE,  "N/A", "0", "0", "0"]];
-	$.each(data.feeds, function() 
-	{
-		var nIdealRange = parseFloat(this[oFields.IDEAL_RANGE]);
-		var nOdometer = parseFloat(this[oFields.ODOMETER]);
-        var nEstRange = parseFloat(this[oFields.ESTIMATED_RANGE]);
-		var nBattLevel = parseFloat(this[oFields.BATTERY_LEVEL]);
-		var sVersion = this[oFields.VERSION] ? this[oFields.VERSION] : "";
-		//check if valid
-		if(nBattLevel && nIdealRange && nBattLevel)	//all should be non-0 and !NAN
+	{		
+		var items = [[" - Initial", InitialRatedIdealRange, "N/A", InitialRatedExpectedRange,  "N/A", "0", "0", "0"]];
+		var oMonthofData = {};
+		$.each(data.feeds, function() 
 		{
-			//write a record every "interval" - SKIPDAYS, otherwise take average
-			oAvgIdeal.sum =  oAvgIdeal.sum + getRange(nIdealRange, nBattLevel);
-			oAvgIdeal.cnt = oAvgIdeal.cnt + 1;
-
+			var nIdealRange = parseFloat(this[oFields.IDEAL_RANGE]);
+			var nOdometer = parseFloat(this[oFields.ODOMETER]);
+			var nEstRange = parseFloat(this[oFields.ESTIMATED_RANGE]);
+			var nBattLevel = parseFloat(this[oFields.BATTERY_LEVEL]);
+			var sVersion = this[oFields.VERSION] ? this[oFields.VERSION] : "";
 			var time = new Date(this["created_at"]);
 			var sCurrMonth = time.getFullYear() + "-" + (time.getMonth()+1);
-
-			oAvgEst.sum =  oAvgEst.sum + getRange(nEstRange, nBattLevel);
-			oAvgEst.cnt = oAvgEst.cnt + 1;
-
-			if((sMonth != sCurrMonth) )
+			
+			if(!oMonthofData[sCurrMonth])
 			{
-				sMonth = sCurrMonth;
-				var nPerI = oAvgIdeal.sum / oAvgIdeal.cnt;
-				var nPerE = oAvgEst.sum / oAvgEst.cnt
-				var sLossI = round2(100 * (nPrevI-nPerI)/nPerI)+"%"
-				var sLossE = round2( 100 * (nPrevE-nPerE)/nPerE )+"%"
+				oMonthofData[sCurrMonth] = new MonthOfResults(sCurrMonth);
+			}
+			oMonthofData[sCurrMonth].setOdometer(nOdometer);
+			oMonthofData[sCurrMonth].setVersion(sVersion);
+			//needed? oMonthofData[sCurrMonth].setYearMonth(sCurrMonth);
+			
+			//check if valid range values
+			if(nEstRange && nIdealRange && nBattLevel)	//all should be non-0 and !NAN
+			{
+				oMonthofData[sCurrMonth].addIdealRange(nIdealRange,nBattLevel);
+				oMonthofData[sCurrMonth].addEstRange(nEstRange,nBattLevel);
+			}		
+		})
+
+		var oPreviousMonth = null;
+		for(var o in oMonthofData)
+		{
+			items.push([
+				oMonthofData[o].getYearMonth(),//year
+				oMonthofData[o].getAverageIdealRange(),// i range
+				oMonthofData[o].getIdealLoss(oPreviousMonth),// irloss
+				oMonthofData[o].getAverageEstRange(),// est range
+				oMonthofData[o].getEstRangeLoss(oPreviousMonth),// est range loss
+				oMonthofData[o].getMaxOdometer(),// odometer
+				oMonthofData[o].milesTravelled(),// miles driven
+				oMonthofData[o].getVersion()// version
+				])
+			oPreviousMonth = oMonthofData[o];
+		}	
+
+	
+	/*
+			var sLossI = round2(100 * (nPrevI-nPerI)/nPerI)+"%"
+		var sLossE = round2( 100 * (nPrevE-nPerE)/nPerE )+"%"
 				//var sDate = (this["created_at"] + "").substring(0,10);
-				items.push( [sCurrMonth,round2(nPerI), sLossI, round2(nPerE), sLossE, round2(nOdometer), 
-					round2(nOdometer-nOdometerDifference), sVersion] );
+				//BUG: this is hte data for the previous month
+		items.push( [sCurrMonth,round2(nPerI), sLossI, round2(nPerE), sLossE, round2(nOdometer), round2(nOdometer-nOdometerDifference), sVersion] );
 			
 				//hold the previous values
 				nPrevI = nPerI;
@@ -238,10 +266,17 @@ callback (string) Function name to be used for JSONP cross-domain requests (opti
 				oAvgEst = {sum:0, cnt:0};
 				
 				nOdometerDifference = nOdometer;
-			}
-		}
-	})
 
+		//oMonthofData[sCurrMonth].getYearMonth()
+
+		//oMonthofData[sCurrMonth].getMaxOdometer();
+		//oMonthofData[sCurrMonth].getVersion()
+		//oMonthofData[sCurrMonth].getAverageIdealRange()
+		//oMonthofData[sCurrMonth].getAverageEstRange()
+
+				*/
+	
+	
 	   $('#batteryTable').DataTable( {
         data: items,
         columns: [
@@ -258,6 +293,7 @@ callback (string) Function name to be used for JSONP cross-domain requests (opti
 	
 	//work out overall loss
 	//compute the the average of the early range values and most recent, to see consistency in the losses
+	//TODO: fix all!?
 	var oAvgRangeEarly = {sum:0, cnt:0};
 	var oAvgRangeLate = {sum:0, cnt:0};
 	var nRecordsToAverage = 2;
@@ -308,6 +344,120 @@ callback (string) Function name to be used for JSONP cross-domain requests (opti
   loadFeed();
   computeAge();
 }
+
+//collect a month's worth of results.
+ function MonthOfResults(sMonth)
+ {
+	this.yearMonth=sMonth;
+	var aIdealRange=[];
+	var aEstRange = [];
+	this._nMaxOdometer=0;
+	this._nMinOdometer = 99999999;
+	this.sMaxVersion = '';
+	
+	//functions
+	this.setOdometer =_odometer;
+	this.getMaxOdometer = _odometer;
+	this.setVersion = _getVersion;
+	this.getVersion = _getVersion;
+	this.setYearMonth = _yearMonth;
+	this.getYearMonth = _yearMonth;
+	this.addIdealRange = _addIdealRange;
+	this.addEstRange = _addEstRange;
+	this.getAverageIdealRange = _avgIdealRange;
+	this.getAverageEstRange = _avgEstRange;
+	this.milesTravelled = _milesTravelled
+	this.getIdealLoss = _idealLoss;
+	this.getEstRangeLoss = _estRangeLoss;
+	
+	function _idealLoss(oPrevMo)
+	{
+		//var InitialRatedIdealRange = 276;	//initial rated ideal range
+		//var InitialRatedExpectedRange = 240;	//initial rated expected range
+		var nPreviousIdealRange = InitialRatedIdealRange;
+		if(oPrevMo)
+		{
+			nPreviousIdealRange = oPrevMo.getAverageIdealRange();
+		}
+		var nAvgRange = _avgIdealRange();
+		return round2( 100 * (nPreviousIdealRange-nAvgRange)/nAvgRange )+"%"
+	}
+	
+	function _estRangeLoss(oPrevMo)
+	{
+		//var InitialRatedIdealRange = 276;	//initial rated ideal range
+		//var InitialRatedExpectedRange = 240;	//initial rated expected range
+		var nPreviousExpRange = InitialRatedExpectedRange;
+		if(oPrevMo)
+		{
+			nPreviousExpRange = oPrevMo.getAverageEstRange();
+		}
+		var nAvgRange = _avgEstRange();
+		return round2( 100 * (nPreviousExpRange-nAvgRange)/nAvgRange )+"%"
+	}
+
+	function _milesTravelled()
+	{
+		return round2(this._nMaxOdometer - this._nMinOdometer);
+	}
+	function _odometer(nVal)
+	{
+		if(nVal)
+		{
+			if(nVal>this._nMaxOdometer)
+			{
+				this._nMaxOdometer = nVal;
+			}
+			else if (nVal < this._nMinOdometer)
+			{
+				this._nMinOdometer = nVal;
+			}
+		}
+		return round2(this._nMaxOdometer);
+	}
+	
+	function _yearMonth(sYearMonth)
+	{
+		if(sYearMonth)
+		{
+			this.yearMonth = sYearMonth
+		}
+		return this.yearMonth;
+	}
+	
+	function _getVersion(sVersion)
+	{
+		if(sVersion)
+		{
+			this.sMaxVersion = sVersion
+		}
+		return this.sMaxVersion;
+	}
+	
+	function _addEstRange(nCurrRange, nLevel)
+	{
+		return aEstRange.push((nCurrRange / (nLevel*.01)))
+	}
+	
+	function _addIdealRange(nCurrRange, nLevel)
+	{
+		return aIdealRange.push((nCurrRange / (nLevel*.01)))
+	}
+
+	function _avgEstRange()
+	{
+		return round2(aEstRange.average());
+	}
+
+	function _avgIdealRange()
+	{
+		return round2(aIdealRange.average());
+	}
+	
+ }
+
+
+
 
   (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
   (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
