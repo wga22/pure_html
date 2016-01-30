@@ -260,7 +260,7 @@ callback (string) Function name to be used for JSONP cross-domain requests (opti
 	//compute the the average of the early range values and most recent, to see consistency in the losses
 	var oAvgRangeEarly = {sum:0, cnt:0};
 	var oAvgRangeLate = {sum:0, cnt:0};
-	var nRecordsToAverage = 5;
+	var nRecordsToAverage = 2;
 	var nPosOfRangeEstimated = 3;
 	for (var x = items.length-1; x >=0; x-- )
 	{
@@ -282,6 +282,8 @@ callback (string) Function name to be used for JSONP cross-domain requests (opti
 	
 	$("#debug").append("<li>Overall Est Range Loss: " + fEstRangeLoss +"%."
 		+"  (Current: "+round2(fCurrentRangeAvg)+ " Original: "+ round2(fOriginalRangeAvg) + ")</li>");
+	
+	$("#debug").append("<li>" + sURL + "</li>");
 	
 	})
 }
