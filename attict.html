@@ -25,7 +25,7 @@
 	// global variables
 	var NMONTHSTOLOAD = 24;
 	var NMAXWINTERTEMP = 40;	//how hot it needs to be in winter to track
-	var NMAXSUMMERTEMP = 80; // how hot it needs to be in summer to track
+	var NMAXSUMMERTEMP = 75; // how hot it needs to be in summer to track
 	var NTHRESHOLD = 10;	//some filter to keep low variances out
 	var MILLISPERMONTH = 31*24*60*60*1000; //days*hours*mins*secs*millis
 	var sTPURL = 'https://api.thingspeak.com/channels/'+channel_id+'/feeds.json?timezone=America%2FNew_York&round=6&results='+NRESULTS+'&api_key='+api_key;
@@ -49,18 +49,16 @@ function computeTempDeltas()
 {
 	//determine the monthly average daily temperature difference when attic is hotter than outside
 	
-	var oDateAtEnd = new Date();
-	oDateAtEnd.setMonth(oDateAtEnd.getMonth()+1);	//increment the date one month forward
-	var sStopDate = getDateToTSStringFirstDay(oDateAtEnd);
+	var oMonthToLoad = new Date();
+	oMonthToLoad.setMonth(oMonthToLoad.getMonth()+1);	//increment the date one month forward
 	for(var x=0; x < NMONTHSTOLOAD; x++)
 	{
 		//  start (datetime) Start date in format YYYY-MM-DD%20HH:NN:SS (optional) (stop is the same)
-		oDateAtEnd.setMonth(oDateAtEnd.getMonth()-1);
-		var sStartDate = getDateToTSStringFirstDay(oDateAtEnd);
-		var sTPURLbyDate =  sTPURL+ "&start=" + sStartDate + "&stop=" + sStopDate;
-		sStopDate = sStartDate;
+		var sStopDate = getDateToTSStringFirstDay(oMonthToLoad);
+		oMonthToLoad.setMonth(oMonthToLoad.getMonth()-1)
+		var sTPURLbyDate =  sTPURL+ "&start=" + getDateToTSStringFirstDay(oMonthToLoad) + "&stop=" + sStopDate;
+		//$('#debug').append("<li>"+sTPURLbyDate+"</li>");
 		
-		//$('#debug').append("<li>"+sTPURLbyDate+"</li>")
 		$.getJSON(sTPURLbyDate, function(data)
 		{
 			$.each(data.feeds, function() 
@@ -112,7 +110,7 @@ function writeTheValues(oVals, sTable)
 	var aDeltasPerMonth = [];
 	for (var x in oVals)
 	{
-		$('#debug').append("<li>"+x+"</li>");
+		//$('#debug').append("<li>loading month: "+x+"</li>");
 		
 		var od = oVals[x];
 		aDeltasPerMonth.push([x, round2(od.avgOutdoorTemp()), round2(od.avgAtticTemp()), round2(od.avgTempDiff()),
@@ -155,7 +153,7 @@ function writeTheValues(oVals, sTable)
 	}
 	else
 	{
-		$('#debug').append("<li>waiting..."+nLoadedMonths+"</li>")
+		$('#debug').append("<li>Finished loading: "+nLoadedMonths+" months of data.</li>")
 		setTimeout("waitAndWriteVals()", 2000);
 	}
  }
@@ -210,11 +208,22 @@ function writeTheValues(oVals, sTable)
 	
 	function _addTemps(nOutdoorT, nAtticT, nAtticHumidity)
 	{
-		this.outdoorTempTotals += nOutdoorT;
-		this.atTempTotals += nAtticT;
-		this.humidityTotals += nAtticHumidity;
-		this.diffTotals += Math.abs(nOutdoorT - nAtticT);
-		this.nCount++;
+		if(validnum(nOutdoorT) && validnum(nAtticT))
+		{
+			this.outdoorTempTotals += nOutdoorT;
+			this.atTempTotals += nAtticT;
+			this.diffTotals += Math.abs(nOutdoorT - nAtticT);
+			this.nCount++;
+		
+		}
+		if(validnum(nAtticHumidity))
+		{
+			this.humidityTotals += nAtticHumidity;
+		}
+	}
+	function validnum(nVal)
+	{
+		return !isNaN(nVal) && (null != nVal)
 	}
  }
  
