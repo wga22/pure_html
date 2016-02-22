@@ -1,0 +1,239 @@
+<html>
+  <head>
+  <title>attic temps</title>
+<style type="text/css">
+  body { background-color: #ddd; }
+  #container { height: 95%; width: 100%; display: table; }
+  #inner { vertical-align: middle; display: table-cell; }
+  .winter { background-color:lightblue;}
+  .summer{ background-color:pink;}
+</style>
+	<link href="https://cdn.datatables.net/1.10.9/css/jquery.dataTables.min.css" rel="stylesheet" title="data tables"/>
+
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+	<script type="text/javascript" src="https://cdn.datatables.net/1.10.9/js/jquery.dataTables.min.js"></script>
+
+	<script type='text/javascript'>
+
+	//<https://code.jquery.com/jquery-1.10.2.js
+	//#map { width: 360px; height:200px; margin: 0 auto; }
+	// set your channel id here
+	var channel_id = 89240;
+	// set your channel's read api key here if necessary
+	var api_key = '5EYUC2WVZN0T2ALY';
+	// global variables
+	var NMONTHSTOLOAD = 24;
+	var MILLISPERMONTH = 31*24*60*60*1000; //days*hours*mins*secs*millis
+	var sTPURL = 'https://api.thingspeak.com/channels/'+channel_id+'/feeds.json?timezone=America%2FNew_York&api_key='+api_key;
+	var oFields = {BALANCE: "field1", HRHASHRATE: "field2"};
+	var nLoadedMonths = 1;
+
+	function getDateToTSStringFirstDay(a_oDate)
+	{
+		//YYYY-MM-DD%20HH:NN:SS
+		if(!a_oDate)
+		{
+			a_oDate = new Date();
+		}
+		var sMonth = (a_oDate.getMonth() + 1);
+		sMonth = (sMonth < 10)? ("0"+sMonth) : (sMonth + "");
+		return (a_oDate.getFullYear()+0) + "-" + sMonth + "-01%2000:00:00"
+	}
+
+function loadAllTheData()
+{
+	//determine the monthly average daily temperature difference when attic is hotter than outside
+	
+	var oMonthToLoad = new Date();
+	oMonthToLoad.setMonth(oMonthToLoad.getMonth()+1);	//increment the date one month forward
+	for(var x=0; x < NMONTHSTOLOAD; x++)
+	{
+		//  start (datetime) Start date in format YYYY-MM-DD%20HH:NN:SS (optional) (stop is the same)
+		var sStopDate = getDateToTSStringFirstDay(oMonthToLoad);
+		oMonthToLoad.setMonth(oMonthToLoad.getMonth()-1)
+		var sTPURLbyDate =  sTPURL+ "&start=" + getDateToTSStringFirstDay(oMonthToLoad) + "&end=" + sStopDate;
+		//$('#debug').append("<li>"+sTPURLbyDate+"</li>");
+		
+		$.getJSON(sTPURLbyDate, function(data)
+		{
+			$.each(data.feeds, function() 
+			{
+				var nBalance = parseFloat(this[oFields.BALANCE]);	//actual temp
+				var nHashRate = parseFloat(this[oFields.HRHASHRATE]); //internet temp
+				var time = new Date(this["created_at"]);
+				//$('#debug').append("<li>"+nAtticT+"</li>");
+				//var time = this["created_at"]
+				if(nBalance >=0 && nHashRate>=0 )
+				{
+					var sYM = time.getFullYear() + "-" + (time.getMonth()+1);					
+					if(!oDeltasPerWinterMonth[sYM])
+					{
+						oDeltasPerWinterMonth[sYM] = new TemperatureResults();
+					}
+					oDeltasPerWinterMonth[sYM].addTemperatures(nOutdoorT,nAtticT,nAtticHumidity);
+				}
+			})
+			//inside the call
+			nLoadedMonths++;
+		}	
+		) //getJSON
+	}	// for loop
+}
+
+function writeTheValues(oVals, sTable)
+	{
+	//compute the averages for each month, and write it to a dataset for output to a table.
+	var aDeltasPerMonth = [];
+	for (var x in oVals)
+	{
+		//$('#debug').append("<li>loading month: "+x+"</li>");
+		
+		var od = oVals[x];
+		aDeltasPerMonth.push([x, round2(od.avgOutdoorTemp()), round2(od.avgAtticTemp()), round2(od.avgTempDiff()),
+			round2(od.avgAtticHumidity()),od.nCount])
+	}
+
+	//write out the table
+	$(sTable).DataTable( {
+        data: aDeltasPerMonth,
+        columns: [
+            { title: "Date" },
+            { title: "Avg. Outdoor" },
+			{ title: "Avg. Attic" },
+			{ title: "Average overheat" },
+			{ title: "Average humidity" },
+            { title: "data points" }
+        ]
+    } );
+}
+
+ function round2(nNum)
+ {
+	return Math.round(nNum * 100)/100;
+ }
+ 
+ function waitAndWriteVals()
+ {
+	
+	if(nLoadedMonths >= NMONTHSTOLOAD)
+	{
+		//writeTheValues();
+		writeTheValues(oDeltasPerSummerMonth, "#summer_temp_table");
+		writeTheValues(oDeltasPerWinterMonth, "#winter_temp_table")
+		/*
+		for(var x in oDeltasPerMonth)
+		{
+			$('#debug').append("<li>"+oDeltasPerMonth[x].avgOutdoorTemp()+"</li>")
+		}
+		*/
+	}
+	else
+	{
+		//$('#debug').append("<li>Finished loading: "+nLoadedMonths+" months of data.</li>")
+		setTimeout("waitAndWriteVals()", 2000);
+	}
+ }
+ function main() 
+ {
+	$("#winterMax").html(NMAXWINTERTEMP);
+	$("#summerMax").html(NMAXSUMMERTEMP);
+	loadAllTheData();
+	waitAndWriteVals();
+	//setTimeout("waitAndWriteVals()", 20000);
+	//setTimeout("writeTheValues()", 20000);
+ }
+
+ function BTCResults()
+ {
+	this.atTempTotals=0;
+	this.outdoorTempTotals=0;
+	this.humidityTotals = 0;
+	this.diffTotals = 0;
+	this.nCount = 0;
+	
+	//functions
+	this.addTemperatures = _addTemps;
+	this.avgOutdoorTemp = _avgOutdoorTemp;
+	this.avgAtticTemp = _avgAtticTemp;
+	this.avgAtticHumidity = _avgAtticHumidity;
+	this.avgTempDiff = _avgTempDiff;
+	
+	function _average(nSum, nCnt)
+	{
+		return nSum / nCnt;
+	}
+	
+	function _avgTempDiff()
+	{
+		return _average(this.diffTotals, this.nCount)
+	}
+	function _avgAtticHumidity()
+	{
+		return _average(this.humidityTotals,this.nCount)
+	}
+
+	function _avgOutdoorTemp()
+	{
+		return _average(this.outdoorTempTotals,this.nCount)
+	}
+	
+	function _avgAtticTemp()
+	{
+		return _average(this.atTempTotals,this.nCount)
+	}
+	
+	function _addTemps(nOutdoorT, nAtticT, nAtticHumidity)
+	{
+		if(validnum(nOutdoorT) && validnum(nAtticT))
+		{
+			this.outdoorTempTotals += nOutdoorT;
+			this.atTempTotals += nAtticT;
+			this.diffTotals += Math.abs(nOutdoorT - nAtticT);
+			this.nCount++;
+		
+		}
+		if(validnum(nAtticHumidity))
+		{
+			this.humidityTotals += nAtticHumidity;
+		}
+	}
+	function validnum(nVal)
+	{
+		return !isNaN(nVal) && (null != nVal)
+	}
+ }
+ 
+ /*
+   (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-550134-9', 'scienceontheweb.net');
+  ga('send', 'pageview');
+*/
+</script>
+</head>
+
+  <body onload="main()">
+  <p>
+	The data in this table indicates the average number of degrees, f, 
+	that the attic is hotter than the outdoors, when its over <span id="summerMax">Loading...</span> or under <span id="winterMax">Loading...</span>.
+	<br>
+	The goal is to track this value, and make changes to bring it down by loosing less house heat in the winter, and reducing the heat in the summer.
+	</br>
+	<br>
+	</br>
+	More data details are available on <a href="https://thingspeak.com/channels/39741">ThingSpeak</a>.
+  </p>
+<div class="summer">Summer Temps
+	<table id="summer_temp_table" class="display" width="80%"></table>
+</div>
+<div class="winter">Winter Temps
+	<table id="winter_temp_table" class="display" width="80%"></table>
+</div>
+
+	<ol id="debug">
+	</ol>
+</body>
+</html>
