@@ -1,6 +1,6 @@
 <html>
   <head>
-  <title>attic temps</title>
+  <title>Bitcoin Mining operations</title>
 <style type="text/css">
   body { background-color: #ddd; }
   #container { height: 95%; width: 100%; display: table; }
@@ -23,10 +23,14 @@
 	var api_key = '5EYUC2WVZN0T2ALY';
 	// global variables
 	var NMONTHSTOLOAD = 24;
-	var MILLISPERMONTH = 31*24*60*60*1000; //days*hours*mins*secs*millis
+	//var MILLISPERMONTH = 31*24*60*60*1000; //days*hours*mins*secs*millis
+	var sURLRate = "https://blockchain.info/q/24hrprice";
 	var sTPURL = 'https://api.thingspeak.com/channels/'+channel_id+'/feeds.json?timezone=America%2FNew_York&api_key='+api_key;
 	var oFields = {BALANCE: "field1", HRHASHRATE: "field2"};
 	var nLoadedMonths = 1;
+	var oMonthlyBTCValues = {};
+	var NBTCFACTOR = 0.00000001
+	var nConversion = 0;
 
 	function getDateToTSStringFirstDay(a_oDate)
 	{
@@ -63,15 +67,17 @@ function loadAllTheData()
 				var time = new Date(this["created_at"]);
 				//$('#debug').append("<li>"+nAtticT+"</li>");
 				//var time = this["created_at"]
-				if(nBalance >=0 && nHashRate>=0 )
+				if(nBalance >=0 && nHashRate>=-100 )
 				{
 					var sYM = time.getFullYear() + "-" + (time.getMonth()+1);					
-					if(!oDeltasPerWinterMonth[sYM])
+					if(!oMonthlyBTCValues[sYM])
 					{
-						oDeltasPerWinterMonth[sYM] = new TemperatureResults();
+						oMonthlyBTCValues[sYM] = new BTCResults();
 					}
-					oDeltasPerWinterMonth[sYM].addTemperatures(nOutdoorT,nAtticT,nAtticHumidity);
+					oMonthlyBTCValues[sYM].addVals(nBalance,nHashRate);
+					//$('#debug').append("<li>FOUND"+nBalance+"</li>");
 				}
+				//$('#debug').append("<li> not!? "+nBalance+ " xx " +nHashRate +"</li>");
 			})
 			//inside the call
 			nLoadedMonths++;
@@ -86,11 +92,12 @@ function writeTheValues(oVals, sTable)
 	var aDeltasPerMonth = [];
 	for (var x in oVals)
 	{
-		//$('#debug').append("<li>loading month: "+x+"</li>");
+		$('#debug').append("<li>loading month: "+x+"</li>");
 		
 		var od = oVals[x];
-		aDeltasPerMonth.push([x, round2(od.avgOutdoorTemp()), round2(od.avgAtticTemp()), round2(od.avgTempDiff()),
-			round2(od.avgAtticHumidity()),od.nCount])
+		var nEarned = od.balanceGrowth()
+		aDeltasPerMonth.push([x,round2(nEarned * nConversion), round2(od.maxBal*nConversion), round2(od.minBal), round2(od.maxBal), round2(nEarned),
+			round2(od.avgHourlyHashRate()),od.nCount])
 	}
 
 	//write out the table
@@ -98,10 +105,12 @@ function writeTheValues(oVals, sTable)
         data: aDeltasPerMonth,
         columns: [
             { title: "Date" },
-            { title: "Avg. Outdoor" },
-			{ title: "Avg. Attic" },
-			{ title: "Average overheat" },
-			{ title: "Average humidity" },
+			{ title: "earned USD" },
+            { title: "Bal USD" },
+			{ title: "Min Balance" },
+			{ title: "Max Balance" },
+			{ title: "Balance Change" },
+			{ title: "Average Hashrate" },
             { title: "data points" }
         ]
     } );
@@ -115,28 +124,28 @@ function writeTheValues(oVals, sTable)
  function waitAndWriteVals()
  {
 	
-	if(nLoadedMonths >= NMONTHSTOLOAD)
+	if(nLoadedMonths >= NMONTHSTOLOAD && nConversion > 0)
 	{
 		//writeTheValues();
-		writeTheValues(oDeltasPerSummerMonth, "#summer_temp_table");
-		writeTheValues(oDeltasPerWinterMonth, "#winter_temp_table")
-		/*
-		for(var x in oDeltasPerMonth)
-		{
-			$('#debug').append("<li>"+oDeltasPerMonth[x].avgOutdoorTemp()+"</li>")
-		}
-		*/
+		writeTheValues(oMonthlyBTCValues, "#summer_table");
 	}
 	else
 	{
-		//$('#debug').append("<li>Finished loading: "+nLoadedMonths+" months of data.</li>")
+		$('#debug').append("<li>Waiting.  Loaded so far "+nLoadedMonths+" months of data.</li>")
 		setTimeout("waitAndWriteVals()", 2000);
 	}
  }
+ function getBTCRate()
+ {
+	$.get( sURLRate, function( data ) 
+	{
+	$('#debug').append("<li>"+data+"</li>");
+	nConversion = parseFloat(data) * NBTCFACTOR;
+	});
+	}
  function main() 
  {
-	$("#winterMax").html(NMAXWINTERTEMP);
-	$("#summerMax").html(NMAXSUMMERTEMP);
+	getBTCRate();
 	loadAllTheData();
 	waitAndWriteVals();
 	//setTimeout("waitAndWriteVals()", 20000);
@@ -145,57 +154,45 @@ function writeTheValues(oVals, sTable)
 
  function BTCResults()
  {
-	this.atTempTotals=0;
-	this.outdoorTempTotals=0;
-	this.humidityTotals = 0;
-	this.diffTotals = 0;
+	this.maxBal=0;
+	this.minBal=9999999999;
+	this.hourlyHashRate = 0;
+	this.balance = 0;
 	this.nCount = 0;
 	
 	//functions
-	this.addTemperatures = _addTemps;
-	this.avgOutdoorTemp = _avgOutdoorTemp;
-	this.avgAtticTemp = _avgAtticTemp;
-	this.avgAtticHumidity = _avgAtticHumidity;
-	this.avgTempDiff = _avgTempDiff;
+	this.addVals = _addVals;
+	this.balanceGrowth = _balanceGrowth;
+	this.avgHourlyHashRate = _avgHourlyHashRate;
 	
 	function _average(nSum, nCnt)
 	{
 		return nSum / nCnt;
 	}
 	
-	function _avgTempDiff()
+	function _balanceGrowth()
 	{
-		return _average(this.diffTotals, this.nCount)
+		return this.maxBal - this.minBal;
 	}
-	function _avgAtticHumidity()
+	function _avgHourlyHashRate()
 	{
-		return _average(this.humidityTotals,this.nCount)
-	}
-
-	function _avgOutdoorTemp()
-	{
-		return _average(this.outdoorTempTotals,this.nCount)
+		return _average(this.hourlyHashRate,this.nCount)
 	}
 	
-	function _avgAtticTemp()
+	function _addVals(nBal, nRate)
 	{
-		return _average(this.atTempTotals,this.nCount)
-	}
+		if(validnum(nRate))
+		{
+			this.hourlyHashRate += nRate;
+		}
+		if(validnum(nBal))
+		{
+			//UNUSED this.balance += nBal;
+			this.minBal = Math.min(nBal, this.minBal);
+			this.maxBal = Math.max(nBal, this.maxBal);
 	
-	function _addTemps(nOutdoorT, nAtticT, nAtticHumidity)
-	{
-		if(validnum(nOutdoorT) && validnum(nAtticT))
-		{
-			this.outdoorTempTotals += nOutdoorT;
-			this.atTempTotals += nAtticT;
-			this.diffTotals += Math.abs(nOutdoorT - nAtticT);
-			this.nCount++;
-		
 		}
-		if(validnum(nAtticHumidity))
-		{
-			this.humidityTotals += nAtticHumidity;
-		}
+		this.nCount++;
 	}
 	function validnum(nVal)
 	{
@@ -217,20 +214,10 @@ function writeTheValues(oVals, sTable)
 
   <body onload="main()">
   <p>
-	The data in this table indicates the average number of degrees, f, 
-	that the attic is hotter than the outdoors, when its over <span id="summerMax">Loading...</span> or under <span id="winterMax">Loading...</span>.
-	<br>
-	The goal is to track this value, and make changes to bring it down by loosing less house heat in the winter, and reducing the heat in the summer.
-	</br>
-	<br>
-	</br>
-	More data details are available on <a href="https://thingspeak.com/channels/39741">ThingSpeak</a>.
+stuff here....
   </p>
-<div class="summer">Summer Temps
-	<table id="summer_temp_table" class="display" width="80%"></table>
-</div>
-<div class="winter">Winter Temps
-	<table id="winter_temp_table" class="display" width="80%"></table>
+<div class="summer">Computations
+	<table id="summer_table" class="display" width="80%"></table>
 </div>
 
 	<ol id="debug">
