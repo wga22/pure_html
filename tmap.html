@@ -15,8 +15,6 @@
 
 	<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
 	<script type="text/javascript" src="https://cdn.datatables.net/1.10.9/js/jquery.dataTables.min.js"></script>
-	<script async defer
-        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCg7dti-2ObZtnU9z_-5teyfyLCUajMur4&signed_in=true&callback=initMap"></script>
 	<script type='text/javascript'>
 
 
@@ -34,7 +32,6 @@
 	var channel_id = 39919;
 	// set your channel's read api key here if necessary
 	var api_key = 'FSOH5JIDQ8N52Q3V';
-	var NRESULTS = 2000;
 	var NMONTHSTOLOAD = 24;
 	var nLoadedMonths = 0;
 	var InitialRatedIdealRange = 276;	//initial rated ideal range
@@ -45,11 +42,12 @@
 	var nDataPoints = 0;
 
 	var sImagePath = "./images/";
-	var sTPURL = 'https://api.thingspeak.com/channels/'+channel_id+'/feeds.json?timezone=America%2FNew_York&api_key=' + api_key;
+	var sTPURL = 'https://api.thingspeak.com/channels/'+channel_id+'/feeds.json?timezone=America%2FNew_York&status=true&api_key=' + api_key;
 
 	var oMaxSpeed = {speed: 0, date: (new Date(0))};
 	var oMarkers = {};
 	var sCurrentPosMark = null;
+	var oMonthofData = {};
 	var oDateRange = {ntBegin:Date.now()+33333, ntEnd:0}
 	var oFields = {ODOMETER: "field3", IDEAL_RANGE:"field6", ESTIMATED_RANGE:"field5", 
 		BATTERY_LEVEL:"field1", LATITUDE:"field7", 
@@ -92,9 +90,31 @@
 					var nLng = parseFloat(this[oFields.LONGITUDE]);
 					var nSpeed = parseFloat(this[oFields.SPEED]);
 					var oDate = new Date(this["created_at"]);
-
-					nSpeed = (nSpeed) ? nSpeed : 0;
+					var nIdealRange = parseFloat(this[oFields.IDEAL_RANGE]);
+					var nOdometer = parseFloat(this[oFields.ODOMETER]);
+					var nEstRange = parseFloat(this[oFields.ESTIMATED_RANGE]);
+					var nBattLevel = parseFloat(this[oFields.BATTERY_LEVEL]);
+					var sVersion = this[oFields.VERSION] ? this[oFields.VERSION] : "";
+					var sCurrMonth = getYearMonthStr(oDate);
 					
+					if(!oMonthofData[sCurrMonth])
+					{
+						oMonthofData[sCurrMonth] = new MonthOfResults(sCurrMonth);
+					}
+					oMonthofData[sCurrMonth].setOdometer(nOdometer);
+					oMonthofData[sCurrMonth].setVersion(sVersion);
+					//needed? oMonthofData[sCurrMonth].setYearMonth(sCurrMonth);
+					
+					//check if valid range values
+					if(nEstRange && nIdealRange && nBattLevel)	//all should be non-0 and !NAN
+					{
+						oMonthofData[sCurrMonth].addIdealRange(nIdealRange,nBattLevel);
+						oMonthofData[sCurrMonth].addEstRange(nEstRange,nBattLevel);
+						//$('#debug').append("<li>ideal: " +nIdealRange+ " est range: "+nEstRange+" battery:"+nBattLevel+" month: "+sCurrMonth+"</li>")
+						//$('#debug').append("<li>ideal raw: " + nIdealRange + " ideal range: "+(nIdealRange / (nBattLevel*.01))+
+						//	" battery:"+nBattLevel+" month: "+sCurrMonth+"</li>")
+					}		
+					nSpeed = (nSpeed) ? nSpeed : 0;
 					if(oMaxSpeed.speed < nSpeed)
 					{
 						oMaxSpeed.speed = nSpeed;
@@ -141,6 +161,7 @@
 		if(nLoadedMonths >= NMONTHSTOLOAD)
 		{
 			drawMarkers();
+			computeAge();
 		}
 		else
 		{
@@ -213,119 +234,65 @@
 		}
 	}
 
+	function getYearMonthStr(oDate)
+	{
+		return oDate.getFullYear() + "-" + (oDate.getMonth()+1);
+	}
 function computeAge()
 {
-/*
-Valid parameters:
-api_key (string) Read API Key for this specific Channel (optional--no key required for public channels)
-results (integer) Number of entries to retrieve, 8000 max, default of 100 (optional)
-days (integer) Number of 24-hour periods before now to include in feed (optional)
-start (datetime) Start date in format YYYY-MM-DD%20HH:NN:SS (optional)
-end (datetime) End date in format YYYY-MM-DD%20HH:NN:SS (optional)
-timezone (string) Timezone identifier for this request (optional)
-offset (integer) Timezone offset that results should be displayed in. Please use the timezone parameter for greater accuracy. (optional)
-status (true/false) Include status updates in feed by setting "status=true" (optional)
-metadata (true/false) Include Channel's metadata by setting "metadata=true" (optional)
-location (true/false) Include latitude, longitude, and elevation in feed by setting "location=true" (optional)
-min (decimal) Minimum value to include in response (optional)
-max (decimal) Maximum value to include in response (optional)
-round (integer) Round to this many decimal places (optional)
------timescale (integer or string) Get first value in this many minutes, valid values: 10, 15, 20, 30, 60, 240, 720, 1440, "daily" (optional)
-sum (integer or string) Get sum of this many minutes, valid values: 10, 15, 20, 30, 60, 240, 720, 1440, "daily" (optional)
-average (integer or string) Get average of this many minutes, valid values: 10, 15, 20, 30, 60, 240, 720, 1440, "daily" (optional)
-median (integer or string) Get median of this many minutes, valid values: 10, 15, 20, 30, 60, 240, 720, 1440, "daily" (optional)
-callback (string) Function name to be used for JSONP cross-domain requests (optional)
-*/
-
-	var sURL = 'https://api.thingspeak.com/channels/'+channel_id+'/feeds.json?location=false&status=true&timescale=720&round=6&results=8000&api_key='+api_key;
-	$.getJSON(sURL, 
-	function(data)
-	{		
+	
 		var items = [[" - Initial", InitialRatedIdealRange, "N/A", InitialRatedExpectedRange,  "N/A", "0", "0", "0"]];
-		var oMonthofData = {};
-		$.each(data.feeds, function() 
-		{
-			var nIdealRange = parseFloat(this[oFields.IDEAL_RANGE]);
-			var nOdometer = parseFloat(this[oFields.ODOMETER]);
-			var nEstRange = parseFloat(this[oFields.ESTIMATED_RANGE]);
-			var nBattLevel = parseFloat(this[oFields.BATTERY_LEVEL]);
-			var sVersion = this[oFields.VERSION] ? this[oFields.VERSION] : "";
-			var time = new Date(this["created_at"]);
-			var sCurrMonth = time.getFullYear() + "-" + (time.getMonth()+1);
-			
-			if(!oMonthofData[sCurrMonth])
-			{
-				oMonthofData[sCurrMonth] = new MonthOfResults(sCurrMonth);
-			}
-			oMonthofData[sCurrMonth].setOdometer(nOdometer);
-			oMonthofData[sCurrMonth].setVersion(sVersion);
-			//needed? oMonthofData[sCurrMonth].setYearMonth(sCurrMonth);
-			
-			//check if valid range values
-			if(nEstRange && nIdealRange && nBattLevel)	//all should be non-0 and !NAN
-			{
-				oMonthofData[sCurrMonth].addIdealRange(nIdealRange,nBattLevel);
-				oMonthofData[sCurrMonth].addEstRange(nEstRange,nBattLevel);
-			}		
-		})
-
-		var oPreviousMonth = null;
 		for(var o in oMonthofData)
 		{
+			var thisMonth = new Date();
+			var aDate = o.split("-");
+			var sPreviousMonth = "xxx";
+			if(aDate.length == 2)
+			{
+				thisMonth.setYear(aDate[0])
+				thisMonth.setMonth(aDate[1]);
+				thisMonth.setMonth(thisMonth.getMonth()-2);
+				sPreviousMonth = getYearMonthStr(thisMonth);
+			}
+			var oPreviousMonth = oMonthofData[sPreviousMonth];
+			//$("#debug").append("<li>blah "+ o +" "+sPreviousMonth +"</li>");
 			items.push([
 				oMonthofData[o].getYearMonth(),//year
 				oMonthofData[o].getAverageIdealRange(),// i range
-				oMonthofData[o].getIdealLoss(oPreviousMonth),// irloss
+				(oPreviousMonth ? (oMonthofData[o].getIdealLoss(oPreviousMonth)+"%") : "N/A"),// irloss
 				oMonthofData[o].getAverageEstRange(),// est range
-				oMonthofData[o].getEstRangeLoss(oPreviousMonth),// est range loss
+				(oPreviousMonth ? (oMonthofData[o].getEstRangeLoss(oPreviousMonth)+"%") : "N/A"),// est range loss
 				oMonthofData[o].getMaxOdometer(),// odometer
 				oMonthofData[o].milesTravelled(),// miles driven
 				oMonthofData[o].getVersion()// version
 				])
-			oPreviousMonth = oMonthofData[o];
 		}	
-
-	
-	/*
-			var sLossI = round2(100 * (nPrevI-nPerI)/nPerI)+"%"
-		var sLossE = round2( 100 * (nPrevE-nPerE)/nPerE )+"%"
-				//var sDate = (this["created_at"] + "").substring(0,10);
-				//BUG: this is hte data for the previous month
-		items.push( [sCurrMonth,round2(nPerI), sLossI, round2(nPerE), sLossE, round2(nOdometer), round2(nOdometer-nOdometerDifference), sVersion] );
-			
-				//hold the previous values
-				nPrevI = nPerI;
-				nPrevE = nPerE;
-				
-				//reset averages
-				oAvgIdeal = {sum:0, cnt:0};
-				oAvgEst = {sum:0, cnt:0};
-				
-				nOdometerDifference = nOdometer;
-
-		//oMonthofData[sCurrMonth].getYearMonth()
-
-		//oMonthofData[sCurrMonth].getMaxOdometer();
-		//oMonthofData[sCurrMonth].getVersion()
-		//oMonthofData[sCurrMonth].getAverageIdealRange()
-		//oMonthofData[sCurrMonth].getAverageEstRange()
-
-				*/
-	
+		var oStartMonth = oMonthofData[getYearMonthStr(new Date(oDateRange.ntBegin))]
+		var oEndMonth = oMonthofData[getYearMonthStr((new Date(oDateRange.ntEnd)))]
+		items.push([
+				"- Net ",
+				round2((oStartMonth.getAverageIdealRange() +oEndMonth.getAverageIdealRange()) /2),// i range
+				oStartMonth.getIdealLoss(oEndMonth),// irloss
+				round2((oStartMonth.getAverageEstRange()+oEndMonth.getAverageEstRange())/2),// est range
+				round2((oStartMonth.getEstRangeLoss()+oEndMonth.getEstRangeLoss())/2),// est range loss
+				oEndMonth.getMaxOdometer(),// odometer
+				oEndMonth.getMaxOdometer(),// miles driven
+				oEndMonth.getVersion()// version		
+		])
 	
 	   $('#batteryTable').DataTable( {
         data: items,
         columns: [
             { title: "Year Month"  },
-            { title: "Ideal Range" },
+            { title: "Avg. Ideal Range" },
             { title: "Ideal Range loss" },
-            { title: "Est. Range" },
-            { title: "Estimated Range Loss" },
+            { title: "Avg. Est. Range" },
+            { title: "Est. Range Loss" },
 			{ title: "Odometer (miles)" },
 			{ title: "Miles Driven" },
 			{ title: "Version" }
         ]
-    } );
+		} );
 	
 	//work out overall loss
 	//compute the the average of the early range values and most recent, to see consistency in the losses
@@ -354,10 +321,9 @@ callback (string) Function name to be used for JSONP cross-domain requests (opti
 	
 	$("#debug").append("<li>Overall Est Range Loss: " + fEstRangeLoss +"%."
 		+"  (Current: "+round2(fCurrentRangeAvg)+ " Original: "+ round2(fOriginalRangeAvg) + ")</li>");
-	
+	//$("#debug").append("<li>Overall Ideal Range Loss: " + fEstRangeLoss +"%."
+	//	+"  (Current: "+round2(fCurrentRangeAvg)+ " Original: "+ round2(fOriginalRangeAvg) + ")</li>");
 	//$("#debug").append("<li>" + sURL + "</li>");
-	
-	})
 }
 
 	function round2(dVal)
@@ -379,7 +345,6 @@ callback (string) Function name to be used for JSONP cross-domain requests (opti
   });
   loadMarkers();
   waitThenDrawMarkers();
-  computeAge();
 }
 
 //collect a month's worth of results.
@@ -417,7 +382,7 @@ callback (string) Function name to be used for JSONP cross-domain requests (opti
 			nPreviousIdealRange = oPrevMo.getAverageIdealRange();
 		}
 		var nAvgRange = _avgIdealRange();
-		return round2( 100 * (nPreviousIdealRange-nAvgRange)/nAvgRange )+"%"
+		return round2( 100 * (nPreviousIdealRange-nAvgRange)/nAvgRange );
 	}
 	
 	function _estRangeLoss(oPrevMo)
@@ -430,7 +395,7 @@ callback (string) Function name to be used for JSONP cross-domain requests (opti
 			nPreviousExpRange = oPrevMo.getAverageEstRange();
 		}
 		var nAvgRange = _avgEstRange();
-		return round2( 100 * (nPreviousExpRange-nAvgRange)/nAvgRange )+"%"
+		return round2( 100 * (nPreviousExpRange-nAvgRange)/nAvgRange );
 	}
 
 	function _milesTravelled()
@@ -490,7 +455,6 @@ callback (string) Function name to be used for JSONP cross-domain requests (opti
 	{
 		return round2(aIdealRange.average());
 	}
-	
  }
 
  function getDateToTSStringFirstDay(a_oDate)
@@ -505,6 +469,50 @@ callback (string) Function name to be used for JSONP cross-domain requests (opti
 	return (a_oDate.getFullYear()+0) + "-" + sMonth + "-01%2000:00:00"
 }
 
+/*
+Valid parameters:
+api_key (string) Read API Key for this specific Channel (optional--no key required for public channels)
+results (integer) Number of entries to retrieve, 8000 max, default of 100 (optional)
+days (integer) Number of 24-hour periods before now to include in feed (optional)
+start (datetime) Start date in format YYYY-MM-DD%20HH:NN:SS (optional)
+end (datetime) End date in format YYYY-MM-DD%20HH:NN:SS (optional)
+timezone (string) Timezone identifier for this request (optional)
+offset (integer) Timezone offset that results should be displayed in. Please use the timezone parameter for greater accuracy. (optional)
+status (true/false) Include status updates in feed by setting "status=true" (optional)
+metadata (true/false) Include Channel's metadata by setting "metadata=true" (optional)
+location (true/false) Include latitude, longitude, and elevation in feed by setting "location=true" (optional)
+min (decimal) Minimum value to include in response (optional)
+max (decimal) Maximum value to include in response (optional)
+round (integer) Round to this many decimal places (optional)
+-----timescale (integer or string) Get first value in this many minutes, valid values: 10, 15, 20, 30, 60, 240, 720, 1440, "daily" (optional)
+sum (integer or string) Get sum of this many minutes, valid values: 10, 15, 20, 30, 60, 240, 720, 1440, "daily" (optional)
+average (integer or string) Get average of this many minutes, valid values: 10, 15, 20, 30, 60, 240, 720, 1440, "daily" (optional)
+median (integer or string) Get median of this many minutes, valid values: 10, 15, 20, 30, 60, 240, 720, 1440, "daily" (optional)
+callback (string) Function name to be used for JSONP cross-domain requests (optional)
+			var sLossI = round2(100 * (nPrevI-nPerI)/nPerI)+"%"
+		var sLossE = round2( 100 * (nPrevE-nPerE)/nPerE )+"%"
+				//var sDate = (this["created_at"] + "").substring(0,10);
+				//BUG: this is hte data for the previous month
+		items.push( [sCurrMonth,round2(nPerI), sLossI, round2(nPerE), sLossE, round2(nOdometer), round2(nOdometer-nOdometerDifference), sVersion] );
+			
+				//hold the previous values
+				nPrevI = nPerI;
+				nPrevE = nPerE;
+				
+				//reset averages
+				oAvgIdeal = {sum:0, cnt:0};
+				oAvgEst = {sum:0, cnt:0};
+				
+				nOdometerDifference = nOdometer;
+
+		//oMonthofData[sCurrMonth].getYearMonth()
+
+		//oMonthofData[sCurrMonth].getMaxOdometer();
+		//oMonthofData[sCurrMonth].getVersion()
+		//oMonthofData[sCurrMonth].getAverageIdealRange()
+		//oMonthofData[sCurrMonth].getAverageEstRange()
+
+				*/
 
 
 
@@ -523,10 +531,13 @@ callback (string) Function name to be used for JSONP cross-domain requests (opti
 	<body>
 		<div id="map"></div>
 		<div id="rangeTable">
-			<h3>Range Information</h3>
+			<h3>Range Information - Monthly Values</h3>
 			<table id="batteryTable" class="display" width="80%"></table>
 		</div>
 		<h3>Miscelaneous Data</h3>
 		<ul id="debug"></ul>
 	</body>
-</html>
+	<script async defer
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCg7dti-2ObZtnU9z_-5teyfyLCUajMur4&signed_in=true&callback=initMap"></script>
+
+	</html>
