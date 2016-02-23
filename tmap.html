@@ -35,15 +35,25 @@
 	// set your channel's read api key here if necessary
 	var api_key = 'FSOH5JIDQ8N52Q3V';
 	var NRESULTS = 2000;
+	var NMONTHSTOLOAD = 24;
+	var nLoadedMonths = 0;
 	var InitialRatedIdealRange = 276;	//initial rated ideal range
 	var InitialRatedExpectedRange = 240;	//initial rated expected range
 
 	// global variables
-	var map, data, previousLoc = {lat:0,lng:0}, nCount=0;
+	var map;
+	var nDataPoints = 0;
+
 	var sImagePath = "./images/";
-	var sTPURL = 'https://api.thingspeak.com/channels/'+channel_id+'/feeds.json?timezone=America%2FNew_York&round=6&results='
-		+NRESULTS + '&api_key=' + api_key;
-	var oFields = {ODOMETER: "field3", IDEAL_RANGE:"field6", ESTIMATED_RANGE:"field5", BATTERY_LEVEL:"field1", LATITUDE:"field7", LONGITUDE:"field8", SPEED:"field2", VERSION:"status"};
+	var sTPURL = 'https://api.thingspeak.com/channels/'+channel_id+'/feeds.json?timezone=America%2FNew_York&api_key=' + api_key;
+
+	var oMaxSpeed = {speed: 0, date: (new Date(0))};
+	var oMarkers = {};
+	var sCurrentPosMark = null;
+	var oDateRange = {ntBegin:Date.now()+33333, ntEnd:0}
+	var oFields = {ODOMETER: "field3", IDEAL_RANGE:"field6", ESTIMATED_RANGE:"field5", 
+		BATTERY_LEVEL:"field1", LATITUDE:"field7", 
+		LONGITUDE:"field8", SPEED:"field2", VERSION:"status"};
 	/*
 	oFields.ODOMETER
 	oFields.IDEAL_RANGE
@@ -60,73 +70,97 @@
 				  6:"car_06.png", 7:"car_07.png", 8:"car_08.png",
 				  9:"car_09.png", 10:"car_10.png", 
 				  stopped:"stopped.png", moving:"moving.png"}
-
 	
-function loadFeed()
-{
-	$.getJSON(sTPURL, function(data)
+	function loadMarkers()
 	{
-		var nCnt = 0;
-		var nMarkersDrawn= 0;
-		var nDataPoints = 0;
-		var oMaxSpeed = {speed: 0, date: (new Date(0))};
-		var oMarkers = {};
-		var oCurrentPosMark = null;
-		var sLastLocation = "";
-		var ntBegin = Date.now();	//look for earlest date, starting with now
-		var ntEnd = 0;	//look for latest date, starting with something early
-		$.each(data.feeds, function() 
+		var oMonthToLoad = new Date();
+		oMonthToLoad.setMonth(oMonthToLoad.getMonth()+1);	//increment the date one month forward
+		for(var x=0; x < NMONTHSTOLOAD; x++)
 		{
-			var nLat = parseFloat(this[oFields.LATITUDE]);
-			var nLng = parseFloat(this[oFields.LONGITUDE]);
-			var nSpeed = parseFloat(this[oFields.SPEED]);
-			var oDate = new Date(this["created_at"]);
+			//  start (datetime) Start date in format YYYY-MM-DD%20HH:NN:SS (optional) (stop is the same)
+			var sStopDate = getDateToTSStringFirstDay(oMonthToLoad);
+			oMonthToLoad.setMonth(oMonthToLoad.getMonth()-1)
+			var sTPURLbyDate =  sTPURL+ "&start=" + getDateToTSStringFirstDay(oMonthToLoad) + "&end=" + sStopDate;
+			//$('#debug').append("<li>"+sTPURLbyDate+"</li>");
+			
+			$.getJSON(sTPURLbyDate, function(data)
+			{
+				var nCnt = 0;
+				$.each(data.feeds, function() 
+				{
+					var nLat = parseFloat(this[oFields.LATITUDE]);
+					var nLng = parseFloat(this[oFields.LONGITUDE]);
+					var nSpeed = parseFloat(this[oFields.SPEED]);
+					var oDate = new Date(this["created_at"]);
 
-			nSpeed = (nSpeed) ? nSpeed : 0;
-			
-			if(oMaxSpeed.speed < nSpeed)
-			{
-				oMaxSpeed.speed = nSpeed;
-				oMaxSpeed.date = oDate;
-			}
-			
-			var nTime = oDate.getTime();
-			if(nTime < ntBegin){ntBegin = nTime}
-			if(nTime > ntEnd){ntEnd = nTime}
-			
-			//break;
-			if(nLat && nLng  )
-			{
-				var sLoc = Math.round(nLat*1000)+""+Math.round(nLng*1000);
-				var sDateString = oDate.toDateString();
-				sLastLocation = sLoc;
-				nDataPoints++;
-				if(oMarkers[sLoc])
-				{
-					//only count 1x per day, and dont bother adding more than 10 dates
-					if(!oMarkers[sLoc].hDates[sDateString] && oMarkers[sLoc].nCnt <= 10)	
+					nSpeed = (nSpeed) ? nSpeed : 0;
+					
+					if(oMaxSpeed.speed < nSpeed)
 					{
-						oMarkers[sLoc].nCnt = oMarkers[sLoc].nCnt+1;
-						oMarkers[sLoc].hDates[sDateString] = true;
-						oMarkers[sLoc].title = oMarkers[sLoc].title + '\n' + sDateString;
+						oMaxSpeed.speed = nSpeed;
+						oMaxSpeed.date = oDate;						
 					}
-				}
-				else
-				{
-					var ohDates = {};
-					ohDates[sDateString] = true;
-					oMarkers[sLoc] = {position:{lat: nLat, lng: nLng}, title:sDateString, hDates: ohDates, speed: nSpeed, nCnt:1};
-				}
-			}
-		})
-		
+					
+					if(nLat && nLng  )
+					{
+						var sLoc = Math.round(nLat*1000)+""+Math.round(nLng*1000);
+						var nTime = oDate.getTime();
+						if(nTime < oDateRange.ntBegin){oDateRange.ntBegin = nTime}
+						if(nTime > oDateRange.ntEnd)
+						{
+							oDateRange.ntEnd = nTime;
+							sCurrentPosMark = sLoc;
+						}
+						var sDateString = oDate.toDateString();
+						nDataPoints++;
+						if(oMarkers[sLoc])
+						{
+							//only count 1x per day, and dont bother adding more than 10 dates
+							if(!oMarkers[sLoc].hDates[sDateString] && oMarkers[sLoc].nCnt <= 10)	
+							{
+								oMarkers[sLoc].nCnt = oMarkers[sLoc].nCnt+1;
+								oMarkers[sLoc].hDates[sDateString] = true;
+								oMarkers[sLoc].title = oMarkers[sLoc].title + '\n' + sDateString;
+							}
+						}
+						else
+						{
+							var ohDates = {};
+							ohDates[sDateString] = true;
+							oMarkers[sLoc] = {position:{lat: nLat, lng: nLng}, title:sDateString, hDates: ohDates, speed: nSpeed, nCnt:1};
+						}
+					}
+				})
+				nLoadedMonths++;
+			})
+		}	// for loop
+	}
+
+	function waitThenDrawMarkers()
+	{
+		if(nLoadedMonths >= NMONTHSTOLOAD)
+		{
+			drawMarkers();
+		}
+		else
+		{
+			//$('#debug').append("<li>Finished loading: "+nLoadedMonths+" months of data.</li>")
+			setTimeout("waitThenDrawMarkers()", 2000);
+		}
+	}
+
+	function drawMarkers()
+	{
+		var nMarkersDrawn= 0;
+		//$('#debug').append("<li>num markers: "+oMarkers.length+" " +nLoadedMonths+"</li>")
+		//var sDateString = (new Date(oDateRange.ntEnd)).toDateString()
 		for(var x in oMarkers)
 		{
 			var oMark = oMarkers[x];
 			nMarkersDrawn++;
-			if(sLastLocation == x)
+			if(x == sCurrentPosMark)
 			{
-				oCurrentPosMark = oMark;
+				continue;
 			}
 			else if(oMark.speed > 0)
 			{
@@ -157,16 +191,19 @@ function loadFeed()
 			}
 		}
 
-		//draw it last, to be sure it sits OVER any other markers
-		var marker = new google.maps.Marker({
-				map: map,
-				icon: sImagePath + oIcons["stopped"],
-				position: oCurrentPosMark.position,
-				title: "Current Location\n" + oCurrentPosMark.title + ((oCurrentPosMark.speed>0)?(" speed:" + oCurrentPosMark.speed): " parked")
-				});
-
-		var dEarliest = new Date(ntBegin);
-		var dLatest = (new Date(ntEnd));
+		if(oMarkers[sCurrentPosMark])
+		{
+			var marker = new google.maps.Marker({
+					map: map,
+					icon: sImagePath + oIcons["stopped"],
+					position: oMarkers[sCurrentPosMark].position,
+					title: "Current Location\n" + oMarkers[sCurrentPosMark].title + 
+					((oMarkers[sCurrentPosMark].speed>0)?(" speed:" + oMarkers[sCurrentPosMark].speed): " parked")
+					});
+		}		
+		
+		var dEarliest = new Date(oDateRange.ntBegin);
+		var dLatest = (new Date(oDateRange.ntEnd));
 		$("#debug").append("<li>Number of Markers:" + nMarkersDrawn + " out of " + nDataPoints 
 			+"<br><b>Note</b> that program only shows unique markers</br></li>");
 		$("#debug").append("<li>Max speed:" + oMaxSpeed.speed +" date:" + (oMaxSpeed.date) + "</li>");
@@ -174,8 +211,7 @@ function loadFeed()
 		{
 			$("#debug").append("<li>Date Range:" + (dEarliest.toDateString()) + " to " + (dLatest.toDateString()) +"</li>");
 		}
-	})
-}
+	}
 
 function computeAge()
 {
@@ -319,7 +355,7 @@ callback (string) Function name to be used for JSONP cross-domain requests (opti
 	$("#debug").append("<li>Overall Est Range Loss: " + fEstRangeLoss +"%."
 		+"  (Current: "+round2(fCurrentRangeAvg)+ " Original: "+ round2(fOriginalRangeAvg) + ")</li>");
 	
-	$("#debug").append("<li>" + sURL + "</li>");
+	//$("#debug").append("<li>" + sURL + "</li>");
 	
 	})
 }
@@ -341,7 +377,8 @@ callback (string) Function name to be used for JSONP cross-domain requests (opti
     scrollwheel: true,
     zoom: 9
   });
-  loadFeed();
+  loadMarkers();
+  waitThenDrawMarkers();
   computeAge();
 }
 
@@ -455,6 +492,18 @@ callback (string) Function name to be used for JSONP cross-domain requests (opti
 	}
 	
  }
+
+ function getDateToTSStringFirstDay(a_oDate)
+{
+	//YYYY-MM-DD%20HH:NN:SS
+	if(!a_oDate)
+	{
+		a_oDate = new Date();
+	}
+	var sMonth = (a_oDate.getMonth() + 1);
+	sMonth = (sMonth < 10)? ("0"+sMonth) : (sMonth + "");
+	return (a_oDate.getFullYear()+0) + "-" + sMonth + "-01%2000:00:00"
+}
 
 
 
