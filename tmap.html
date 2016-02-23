@@ -269,6 +269,7 @@ function computeAge()
 		}	
 		var oStartMonth = oMonthofData[getYearMonthStr(new Date(oDateRange.ntBegin))]
 		var oEndMonth = oMonthofData[getYearMonthStr((new Date(oDateRange.ntEnd)))]
+		/*
 		items.push([
 				"- Net ",
 				round2((oStartMonth.getAverageIdealRange() +oEndMonth.getAverageIdealRange()) /2),// i range
@@ -279,6 +280,7 @@ function computeAge()
 				oEndMonth.getMaxOdometer(),// miles driven
 				oEndMonth.getVersion()// version		
 		])
+		*/
 	
 	   $('#batteryTable').DataTable( {
         data: items,
@@ -294,36 +296,8 @@ function computeAge()
         ]
 		} );
 	
-	//work out overall loss
-	//compute the the average of the early range values and most recent, to see consistency in the losses
-	//TODO: fix all!?
-	var oAvgRangeEarly = {sum:0, cnt:0};
-	var oAvgRangeLate = {sum:0, cnt:0};
-	var nRecordsToAverage = 2;
-	var nPosOfRangeEstimated = 3;
-	for (var x = items.length-1; x >=0; x-- )
-	{
-		if(x < nRecordsToAverage)
-		{
-			oAvgRangeEarly.cnt = oAvgRangeEarly.cnt + 1;
-			oAvgRangeEarly.sum = oAvgRangeEarly.sum + items[x][nPosOfRangeEstimated];
-		}
-		if(x > (items.length - nRecordsToAverage))
-		{
-			oAvgRangeLate.cnt = oAvgRangeLate.cnt + 1;
-			oAvgRangeLate.sum = oAvgRangeLate.sum + items[x][nPosOfRangeEstimated];
-		}
-		//$("#debug").append("<li>blah" + items[x][nPosOfRangeEstimated] + ", "+oAvgRangeLate.sum +"</li>");
-	}
-	var fCurrentRangeAvg = oAvgRangeLate.sum / oAvgRangeLate.cnt; 
-	var fOriginalRangeAvg = (oAvgRangeEarly.sum/ oAvgRangeEarly.cnt)
-	var fEstRangeLoss = round2((fOriginalRangeAvg-fCurrentRangeAvg)/fOriginalRangeAvg*100);
-	
-	$("#debug").append("<li>Overall Est Range Loss: " + fEstRangeLoss +"%."
-		+"  (Current: "+round2(fCurrentRangeAvg)+ " Original: "+ round2(fOriginalRangeAvg) + ")</li>");
-	//$("#debug").append("<li>Overall Ideal Range Loss: " + fEstRangeLoss +"%."
-	//	+"  (Current: "+round2(fCurrentRangeAvg)+ " Original: "+ round2(fOriginalRangeAvg) + ")</li>");
-	//$("#debug").append("<li>" + sURL + "</li>");
+	$("#debug").append("<li>Overall Est Range Loss: " + (-oStartMonth.getEstRangeLoss(oEndMonth)) +"%</li>");
+	$("#debug").append("<li>Overall Ideal Range Loss: " + (-oStartMonth.getIdealLoss(oEndMonth)) +"%</li>");
 }
 
 	function round2(dVal)
