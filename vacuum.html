@@ -27,7 +27,7 @@
 	var sURLRate = "https://blockchain.info/q/24hrprice";
 	var DIFFURL = "https://blockchain.info/q/getdifficulty"
 	var sTPURL = 'https://api.thingspeak.com/channels/'+channel_id+'/feeds.json?timezone=America%2FNew_York&api_key='+api_key;
-	var oFields = {BALANCE: "field1", HRHASHRATE: "field2"};
+	var oFields = {BALANCE: "field1", HRHASHRATE: "field2", DIFFICULTY: "field3"};
 	var nLoadedMonths = 1;
 	var oMonthlyBTCValues = {};
 	var NBTCFACTOR = 0.00000001
@@ -74,6 +74,7 @@ function loadAllTheData()
 	{
 		//  start (datetime) Start date in format YYYY-MM-DD%20HH:NN:SS (optional) (stop is the same)
 		var sStopDate = getDateToTSStringFirstDay(oMonthToLoad);
+		var sYM = (1902+oMonthToLoad.getYear()) + "-" + (oMonthToLoad.getMonth()-1)
 		oMonthToLoad.setMonth(oMonthToLoad.getMonth()-1)
 		var sTPURLbyDate =  sTPURL+ "&start=" + getDateToTSStringFirstDay(oMonthToLoad) + "&end=" + sStopDate;
 		//$('#debug').append("<li>"+sTPURLbyDate+"</li>");
@@ -82,14 +83,15 @@ function loadAllTheData()
 		{
 			$.each(data.feeds, function() 
 			{
-				var nBalance = parseFloat(this[oFields.BALANCE]);	//actual temp
-				var nHashRate = parseFloat(this[oFields.HRHASHRATE]); //internet temp
-				var time = new Date(this["created_at"]);
+				var nBalance = parseFloat(this[oFields.BALANCE]);	//balance
+				var nHashRate = parseFloat(this[oFields.HRHASHRATE]); //hourly hash rate
+				var nDifficulty = parseFloat(this[oFields.DIFFICULTY]); //difficulty - not in original dataset
+				//efficiency move var time = new Date(this["created_at"]);
 				//$('#debug').append("<li>"+nAtticT+"</li>");
 				//var time = this["created_at"]
 				if(nBalance >=0 && nHashRate>=-100 )
 				{
-					var sYM = time.getFullYear() + "-" + (time.getMonth()+1);					
+					//efficiency move var sYM = time.getFullYear() + "-" + (time.getMonth()+1);					
 					if(!oMonthlyBTCValues[sYM])
 					{
 						oMonthlyBTCValues[sYM] = new BTCResults();
@@ -117,13 +119,13 @@ function writeTheValues(oVals, sTable)
 		var od = oVals[x];
 		var nEarned = od.balanceGrowth()
 		aDeltasPerMonth.push([x,
-			("$" + round2(nEarned * nConversion)), 
-			("$" + round2(od.maxBal*nConversion)),
-			round2(od.minBal), round2(od.maxBal),
+			("$" + round2(od.maxBal*nConversion)), 
+			("$" + round2(nEarned * nConversion)),
 			round2(nEarned),
-			(round2(od.avgHourlyHashRate())),
+			(round2(od.avgHourlyHashRate(true))),
 			(round2(od.percentRunning() * 100) + "%"),
 			("$" + round2(od.revPerHour()*nConversion)),
+			(od.difficultyIncrease()),
 			od.nCount]);
 	}
 
@@ -132,15 +134,14 @@ function writeTheValues(oVals, sTable)
         data: aDeltasPerMonth,
         columns: [
             { title: "Date" },
-			{ title: "earned USD" },
             { title: "Bal USD" },
-			{ title: "Min Balance" },
-			{ title: "Max Balance" },
-			{ title: "Balance Change" },
-			{ title: "Average Hashrate" },
+			{ title: "Earned USD" },
+			{ title: "Earned BTC" },
+			{ title: "Average Hashrate (THs)" },
 			{ title: "Time Running" },
 			{ title: "Rev per hour running" },
-            { title: "data points" }
+			{ title: "Diff Increase"},
+            { title: "# Collected" }
         ]
     } );
 }
@@ -168,7 +169,7 @@ function writeTheValues(oVals, sTable)
  {
 	$.get( sURLRate, function( data ) 
 	{
-	$('#debug').append("<li>"+data+"</li>");
+	$('#debug').append("<li>BTC Price: "+data+"</li>");
 	nConversion = parseFloat(data) * NBTCFACTOR;
 	});
 }
@@ -185,7 +186,7 @@ function getDifficulty()
  function main() 
  {
 	getBTCRate();
-	getDifficulty();
+	//getDifficulty();
 	loadAllTheData();
 	waitAndWriteVals();
 	//setTimeout("waitAndWriteVals()", 20000);
@@ -194,6 +195,7 @@ function getDifficulty()
 
  function BTCResults()
  {
+	var THSDIGITS = 1000000000000;
 	this.maxBal=0;
 	this.minBal=9999999999;
 	this.hourlyHashRate = 0;
@@ -207,6 +209,12 @@ function getDifficulty()
 	this.avgHourlyHashRate = _avgHourlyHashRate;
 	this.percentRunning = _perRunning;
 	this.revPerHour = _revBTCPerHour;
+	this.difficultyIncrease = _difficultyIncrease;
+	
+	function _difficultyIncrease()
+	{
+		return 0;
+	}
 	
 	function _revBTCPerHour()
 	{
@@ -228,9 +236,9 @@ function getDifficulty()
 	{
 		return this.maxBal - this.minBal;
 	}
-	function _avgHourlyHashRate()
+	function _avgHourlyHashRate(fInThs)
 	{
-		return _average(this.hourlyHashRate,this.nCount)
+		return _average(this.hourlyHashRate/THSDIGITS,this.nCount)
 	}
 	
 	function _addVals(nBal, nRate)
