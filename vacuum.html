@@ -96,7 +96,7 @@ function loadAllTheData()
 					{
 						oMonthlyBTCValues[sYM] = new BTCResults();
 					}
-					oMonthlyBTCValues[sYM].addVals(nBalance,nHashRate);
+					oMonthlyBTCValues[sYM].addVals(nBalance,nHashRate,nDifficulty);
 					//$('#debug').append("<li>FOUND"+nBalance+"</li>");
 				}
 				//$('#debug').append("<li> not!? "+nBalance+ " xx " +nHashRate +"</li>");
@@ -125,7 +125,7 @@ function writeTheValues(oVals, sTable)
 			(round2(od.avgHourlyHashRate(true))),
 			(round2(od.percentRunning() * 100) + "%"),
 			("$" + round2(od.revPerHour()*nConversion)),
-			(od.difficultyIncrease()),
+			(round2(od.difficultyIncrease()*100) + "%"),
 			od.nCount]);
 	}
 
@@ -196,8 +196,10 @@ function getDifficulty()
  function BTCResults()
  {
 	var THSDIGITS = 1000000000000;
+	this.minDiff = 90071992547409;
+	this.maxDiff = 0;
 	this.maxBal=0;
-	this.minBal=9999999999;
+	this.minBal=90071992547409;
 	this.hourlyHashRate = 0;
 	this.balance = 0;
 	this.nCount = 0;
@@ -213,7 +215,8 @@ function getDifficulty()
 	
 	function _difficultyIncrease()
 	{
-		return 0;
+		$('#debug').append("<li>"+this.minDiff+" " + this.maxDiff +"</li>");
+		return (this.maxDiff - this.minDiff) / ((this.maxDiff + this.minDiff)/2);
 	}
 	
 	function _revBTCPerHour()
@@ -241,7 +244,7 @@ function getDifficulty()
 		return _average(this.hourlyHashRate/THSDIGITS,this.nCount)
 	}
 	
-	function _addVals(nBal, nRate)
+	function _addVals(nBal, nRate, nDifficulty)
 	{
 		if(validnum(nRate))
 		{
@@ -256,7 +259,11 @@ function getDifficulty()
 			//UNUSED this.balance += nBal;
 			this.minBal = Math.min(nBal, this.minBal);
 			this.maxBal = Math.max(nBal, this.maxBal);
-	
+		}
+		if(validnum(nDifficulty))
+		{
+			this.minBal = Math.min(nDifficulty, this.minDiff);
+			this.maxBal = Math.max(nDifficulty, this.maxDiff);			
 		}
 		this.nCount++;
 	}
