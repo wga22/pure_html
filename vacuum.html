@@ -1,12 +1,12 @@
+
 <html>
   <head>
   <title>Bitcoin Mining operations</title>
 <style type="text/css">
-  body { background-color: #ddd; }
+  body { background-color: #eeeeee; }
   #container { height: 95%; width: 100%; display: table; }
   #inner { vertical-align: middle; display: table-cell; }
-  .winter { background-color:lightblue;}
-  .summer{ background-color:pink;}
+  #btc_results_table{ background-color:lightblue;}
 </style>
 	<link href="https://cdn.datatables.net/1.10.9/css/jquery.dataTables.min.css" rel="stylesheet" title="data tables"/>
 
@@ -25,6 +25,7 @@
 	var NMONTHSTOLOAD = 24;
 	//var MILLISPERMONTH = 31*24*60*60*1000; //days*hours*mins*secs*millis
 	var sURLRate = "https://blockchain.info/q/24hrprice";
+	var DIFFURL = "https://blockchain.info/q/getdifficulty"
 	var sTPURL = 'https://api.thingspeak.com/channels/'+channel_id+'/feeds.json?timezone=America%2FNew_York&api_key='+api_key;
 	var oFields = {BALANCE: "field1", HRHASHRATE: "field2"};
 	var nLoadedMonths = 1;
@@ -44,10 +45,29 @@
 		return (a_oDate.getFullYear()+0) + "-" + sMonth + "-01%2000:00:00"
 	}
 
+	function loadMissingFeb2016Data()
+	{
+		//test to see if feb 2016 still relevant, by looking at current dates
+		var dFeb2016 = new Date(2016, 1,1);
+		//find out date of oldest data that would be loaded
+		var dOldest = new Date();
+		dOldest.setMonth(dOldest.getMonth() - NMONTHSTOLOAD);
+		$('#debug').append("<li>"+dOldest.toDateString()+" " + dFeb2016.toDateString() +"</li>");
+		if(dFeb2016.getTime() > dOldest.getTime())
+		{
+			var sYM = "2016-2";
+			oMonthlyBTCValues[sYM] = new BTCResults();
+			for(var y = 0; y < 50; y++)
+			{
+				//we dont care much about accuracy of the data, just want to get reasonable averages
+				oMonthlyBTCValues[sYM].addVals(10,4070461533910);
+			}
+		}
+	}
 function loadAllTheData()
 {
 	//determine the monthly average daily temperature difference when attic is hotter than outside
-	
+	loadMissingFeb2016Data();
 	var oMonthToLoad = new Date();
 	oMonthToLoad.setMonth(oMonthToLoad.getMonth()+1);	//increment the date one month forward
 	for(var x=0; x < NMONTHSTOLOAD; x++)
@@ -92,12 +112,19 @@ function writeTheValues(oVals, sTable)
 	var aDeltasPerMonth = [];
 	for (var x in oVals)
 	{
-		$('#debug').append("<li>loading month: "+x+"</li>");
+		//$('#debug').append("<li>loading month: "+x+"</li>");
 		
 		var od = oVals[x];
 		var nEarned = od.balanceGrowth()
-		aDeltasPerMonth.push([x,round2(nEarned * nConversion), round2(od.maxBal*nConversion), round2(od.minBal), round2(od.maxBal), round2(nEarned),
-			round2(od.avgHourlyHashRate()),od.nCount])
+		aDeltasPerMonth.push([x,
+			("$" + round2(nEarned * nConversion)), 
+			("$" + round2(od.maxBal*nConversion)),
+			round2(od.minBal), round2(od.maxBal),
+			round2(nEarned),
+			(round2(od.avgHourlyHashRate())),
+			(round2(od.percentRunning() * 100) + "%"),
+			("$" + round2(od.revPerHour()*nConversion)),
+			od.nCount]);
 	}
 
 	//write out the table
@@ -111,6 +138,8 @@ function writeTheValues(oVals, sTable)
 			{ title: "Max Balance" },
 			{ title: "Balance Change" },
 			{ title: "Average Hashrate" },
+			{ title: "Time Running" },
+			{ title: "Rev per hour running" },
             { title: "data points" }
         ]
     } );
@@ -127,7 +156,7 @@ function writeTheValues(oVals, sTable)
 	if(nLoadedMonths >= NMONTHSTOLOAD && nConversion > 0)
 	{
 		//writeTheValues();
-		writeTheValues(oMonthlyBTCValues, "#summer_table");
+		writeTheValues(oMonthlyBTCValues, "#btc_results_table");
 	}
 	else
 	{
@@ -142,10 +171,21 @@ function writeTheValues(oVals, sTable)
 	$('#debug').append("<li>"+data+"</li>");
 	nConversion = parseFloat(data) * NBTCFACTOR;
 	});
-	}
+}
+
+function getDifficulty()
+{
+	//163491654908.95926 / 1.6349165490895926E11
+	$.get( DIFFURL, function( data ) 
+	{
+		var nDiff = parseFloat(data)
+		$('#debug').append("<li>DIFF:"+data+" " + nDiff + "</li>");
+	});
+}
  function main() 
  {
 	getBTCRate();
+	getDifficulty();
 	loadAllTheData();
 	waitAndWriteVals();
 	//setTimeout("waitAndWriteVals()", 20000);
@@ -159,11 +199,25 @@ function writeTheValues(oVals, sTable)
 	this.hourlyHashRate = 0;
 	this.balance = 0;
 	this.nCount = 0;
+	this.nCountRunning = 0;
 	
 	//functions
 	this.addVals = _addVals;
 	this.balanceGrowth = _balanceGrowth;
 	this.avgHourlyHashRate = _avgHourlyHashRate;
+	this.percentRunning = _perRunning;
+	this.revPerHour = _revBTCPerHour;
+	
+	function _revBTCPerHour()
+	{
+		//return _balanceGrowth() / this.nCountRunning
+		return (this.maxBal - this.minBal) / this.nCountRunning
+	}
+	
+	function _perRunning()
+	{
+		return this.nCountRunning / this.nCount;
+	}
 	
 	function _average(nSum, nCnt)
 	{
@@ -183,6 +237,10 @@ function writeTheValues(oVals, sTable)
 	{
 		if(validnum(nRate))
 		{
+			if(nRate > 0)
+			{
+				this.nCountRunning++
+			}
 			this.hourlyHashRate += nRate;
 		}
 		if(validnum(nBal))
@@ -214,10 +272,10 @@ function writeTheValues(oVals, sTable)
 
   <body onload="main()">
   <p>
-stuff here....
+	This page provides details on BTC mining operations.
   </p>
 <div class="summer">Computations
-	<table id="summer_table" class="display" width="80%"></table>
+	<table id="btc_results_table" class="display" width="80%"></table>
 </div>
 
 	<ol id="debug">
