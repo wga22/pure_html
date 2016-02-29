@@ -31,7 +31,9 @@
 	var nLoadedMonths = 1;
 	var oMonthlyBTCValues = {};
 	var NBTCFACTOR = 0.00000001
-	var nConversion = 0;
+	var nUSDperBTC = 0;
+	var nBalanceCurr = 0;
+	var fLastRunning = null;
 
 	function getDateToTSStringFirstDay(a_oDate)
 	{
@@ -97,13 +99,14 @@ function loadAllTheData()
 						oMonthlyBTCValues[sYM] = new BTCResults();
 					}
 					oMonthlyBTCValues[sYM].addVals(nBalance,nHashRate,nDifficulty);
+					fLastRunning = (nHashRate > 0);
 					//$('#debug').append("<li>FOUND"+nBalance+"</li>");
 				}
 				//$('#debug').append("<li> not!? "+nBalance+ " xx " +nHashRate +"</li>");
 			})
 			//inside the call
 			nLoadedMonths++;
-		}	
+		}
 		) //getJSON
 	}	// for loop
 }
@@ -117,14 +120,13 @@ function writeTheValues(oVals, sTable)
 		//$('#debug').append("<li>loading month: "+x+"</li>");
 		
 		var od = oVals[x];
-		var nEarned = od.balanceGrowth()
-		aDeltasPerMonth.push([x,
-			("$" + round2(od.maxBal*nConversion)), 
-			("$" + round2(nEarned * nConversion)),
-			round2(nEarned),
+		var nEarned = (od.balanceGrowth()* NBTCFACTOR)
+		aDeltasPerMonth.push([x, 
+			("$" + (round2(nEarned * nUSDperBTC))),
+			round2(nEarned*1000),
 			(round2(od.avgHourlyHashRate(true))),
 			(round2(od.percentRunning() * 100) + "%"),
-			("$" + round2(od.revPerHour()*nConversion)),
+			("$" + round2(od.revPerHour()*nUSDperBTC*NBTCFACTOR)),
 			(round2(od.difficultyIncrease()*100) + "%"),
 			od.nCount]);
 	}
@@ -134,9 +136,8 @@ function writeTheValues(oVals, sTable)
         data: aDeltasPerMonth,
         columns: [
             { title: "Date" },
-            { title: "Bal USD" },
 			{ title: "Earned USD" },
-			{ title: "Earned BTC" },
+			{ title: "Earned mBTC" },
 			{ title: "Average Hashrate (THs)" },
 			{ title: "Time Running" },
 			{ title: "Rev per hour running" },
@@ -144,6 +145,19 @@ function writeTheValues(oVals, sTable)
             { title: "# Collected" }
         ]
     } );
+	
+	//indicate if running
+	if(fLastRunning!=null)
+	{
+		var sTLight = "stoplight_red.png";
+		if(fLastRunning)
+		{
+			sTLight = "stoplight_green.png";
+		}
+		$('#hashrunning').html("<img src='images/"+sTLight+"' height='60'></img>");
+	}
+	
+
 }
 
  function round2(nNum)
@@ -154,7 +168,7 @@ function writeTheValues(oVals, sTable)
  function waitAndWriteVals()
  {
 	
-	if(nLoadedMonths >= NMONTHSTOLOAD && nConversion > 0)
+	if(nLoadedMonths >= NMONTHSTOLOAD && nUSDperBTC > 0)
 	{
 		//writeTheValues();
 		writeTheValues(oMonthlyBTCValues, "#btc_results_table");
@@ -169,24 +183,39 @@ function writeTheValues(oVals, sTable)
  {
 	$.get( sURLRate, function( data ) 
 	{
-	$('#debug').append("<li>BTC Price: "+data+"</li>");
-	nConversion = parseFloat(data) * NBTCFACTOR;
+		$('#debug').append("<li>BTC Price: "+data+"</li>");
+		var nVal = parseFloat(data);
+		nUSDperBTC = nVal;
+		//$('#debug').append("<li>nVal: "+nVal+" nUSDperBTC:"+nBalanceCurr+" </li>");
+		$('#balanceUSD').html("$" + round2(nUSDperBTC * nBalanceCurr * NBTCFACTOR))
 	});
 }
 
-function getDifficulty()
+function getCurrentData()
 {
 	//163491654908.95926 / 1.6349165490895926E11
-	$.get( DIFFURL, function( data ) 
+	$.get( "https://blockchain.info/q/addressbalance/1LvvbLXyiNBkQ8vpe3Vgh3YAVmRoi3Q4AP", function( data ) 
 	{
 		var nDiff = parseFloat(data)
-		$('#debug').append("<li>DIFF:"+data+" " + nDiff + "</li>");
+		nBalanceCurr = data;
+		$('#balancemBTC').html("" + (nBalanceCurr * NBTCFACTOR * 1000));
+		getBTCRate();
 	});
+/*
+	//TODO? var miningURL = "http://www.kano.is/index.php?k=api&username=XXXX&api=XXXX&json=y";
+	$.getJSON( miningURL, function( data ) 
+	{
+		var nDiff = parseFloat(data)
+		nBalanceCurr = data;
+		$('#balancemBTC').html("" + (nBalanceCurr * NBTCFACTOR * 1000));
+		getBTCRate();
+	});
+	*/
+	
 }
  function main() 
  {
-	getBTCRate();
-	//getDifficulty();
+	getCurrentData();
 	loadAllTheData();
 	waitAndWriteVals();
 	//setTimeout("waitAndWriteVals()", 20000);
@@ -215,7 +244,7 @@ function getDifficulty()
 	
 	function _difficultyIncrease()
 	{
-		$('#debug').append("<li>"+this.minDiff+" " + this.maxDiff +"</li>");
+		//$('#debug').append("<li>"+this.minDiff+" " + this.maxDiff +"</li>");
 		return (this.maxDiff - this.minDiff) / ((this.maxDiff + this.minDiff)/2);
 	}
 	
@@ -237,6 +266,7 @@ function getDifficulty()
 	
 	function _balanceGrowth()
 	{
+		//$('#debug').append("<li>maxbal minbal "+this.maxBal+" " + this.minBal +"</li>");
 		return this.maxBal - this.minBal;
 	}
 	function _avgHourlyHashRate(fInThs)
@@ -262,8 +292,8 @@ function getDifficulty()
 		}
 		if(validnum(nDifficulty))
 		{
-			this.minBal = Math.min(nDifficulty, this.minDiff);
-			this.maxBal = Math.max(nDifficulty, this.maxDiff);			
+			this.minDiff = Math.min(nDifficulty, this.minDiff);
+			this.maxDiff = Math.max(nDifficulty, this.maxDiff);			
 		}
 		this.nCount++;
 	}
@@ -287,12 +317,14 @@ function getDifficulty()
 
   <body onload="main()">
   <p>
-	This page provides details on BTC mining operations.
+<table style="border-width:1; border-style:solid">
+<tr><th>Current Balance USD</th><th>Current Balance mBTC</th><th>Running</th></tr>
+<tr><td id="balanceUSD">$0.00</td><td id="balancemBTC">0000<td></td><td id="hashrunning">unknown</td></tr>
+</table>
   </p>
-<div class="summer">Computations
+<div class="summer">
 	<table id="btc_results_table" class="display" width="80%"></table>
 </div>
-
 	<ol id="debug">
 	</ol>
 </body>
