@@ -1,4 +1,5 @@
 
+
 <html>
   <head>
   <title>Bitcoin Mining operations</title>
@@ -14,7 +15,7 @@
 	<script type="text/javascript" src="https://cdn.datatables.net/1.10.9/js/jquery.dataTables.min.js"></script>
 
 	<script type='text/javascript'>
-
+	//more APIS : https://blockchain.info/q
 	//<https://code.jquery.com/jquery-1.10.2.js
 	//#map { width: 360px; height:200px; margin: 0 auto; }
 	// set your channel id here
@@ -27,6 +28,7 @@
 	var sURLRate = "https://blockchain.info/q/24hrprice";
 	var DIFFURL = "https://blockchain.info/q/getdifficulty"
 	var sTPURL = 'https://api.thingspeak.com/channels/'+channel_id+'/feeds.json?timezone=America%2FNew_York&api_key='+api_key;
+	var sHRURL = 'https://api.thingspeak.com/channels/'+channel_id+'/fields/2.json?results=1&api_key='+api_key;
 	var oFields = {BALANCE: "field1", HRHASHRATE: "field2", DIFFICULTY: "field3"};
 	var nLoadedMonths = 1;
 	var oMonthlyBTCValues = {};
@@ -76,39 +78,50 @@ function loadAllTheData()
 	{
 		//  start (datetime) Start date in format YYYY-MM-DD%20HH:NN:SS (optional) (stop is the same)
 		var sStopDate = getDateToTSStringFirstDay(oMonthToLoad);
-		var sYM = (1902+oMonthToLoad.getYear()) + "-" + (oMonthToLoad.getMonth()-1)
 		oMonthToLoad.setMonth(oMonthToLoad.getMonth()-1)
-		var sTPURLbyDate =  sTPURL+ "&start=" + getDateToTSStringFirstDay(oMonthToLoad) + "&end=" + sStopDate;
-		//$('#debug').append("<li>"+sTPURLbyDate+"</li>");
+		var sTPURLbyDate =  sTPURL+ "&start=" +  getDateToTSStringFirstDay(oMonthToLoad) + "&end=" + sStopDate;
+		//$('#debug').append("<li>---"+sTPURLbyDate+"</li>");
 		
 		$.getJSON(sTPURLbyDate, function(data)
 		{
 			$.each(data.feeds, function() 
 			{
+				
 				var nBalance = parseFloat(this[oFields.BALANCE]);	//balance
 				var nHashRate = parseFloat(this[oFields.HRHASHRATE]); //hourly hash rate
 				var nDifficulty = parseFloat(this[oFields.DIFFICULTY]); //difficulty - not in original dataset
-				//efficiency move var time = new Date(this["created_at"]);
-				//$('#debug').append("<li>"+nAtticT+"</li>");
-				//var time = this["created_at"]
+				var time = new Date(this["created_at"]);
+		
 				if(nBalance >=0 && nHashRate>=-100 )
 				{
-					//efficiency move var sYM = time.getFullYear() + "-" + (time.getMonth()+1);					
+					var sYM = time.getFullYear() + "-" + (time.getMonth()+1);
 					if(!oMonthlyBTCValues[sYM])
 					{
 						oMonthlyBTCValues[sYM] = new BTCResults();
 					}
 					oMonthlyBTCValues[sYM].addVals(nBalance,nHashRate,nDifficulty);
-					fLastRunning = (nHashRate > 0);
-					//$('#debug').append("<li>FOUND"+nBalance+"</li>");
 				}
-				//$('#debug').append("<li> not!? "+nBalance+ " xx " +nHashRate +"</li>");
 			})
 			//inside the call
 			nLoadedMonths++;
 		}
 		) //getJSON
 	}	// for loop
+	
+	//determine if service was running in most recent status
+	$.getJSON(sHRURL, function(data)
+	{
+		$.each(data.feeds, function() 
+		{
+			var nHashRate = parseFloat(this[oFields.HRHASHRATE]); //hourly hash rate
+			fLastRunning = (nHashRate > 0);
+			//$('#debug').append("<li>if running: "+nHashRate+"</li>");
+		})
+	}
+	) //getJSON
+	
+	
+	
 }
 
 function writeTheValues(oVals, sTable)
@@ -167,8 +180,7 @@ function writeTheValues(oVals, sTable)
  
  function waitAndWriteVals()
  {
-	
-	if(nLoadedMonths >= NMONTHSTOLOAD && nUSDperBTC > 0)
+	if(nLoadedMonths >= NMONTHSTOLOAD && nUSDperBTC > 0 && fLastRunning!=null)
 	{
 		//writeTheValues();
 		writeTheValues(oMonthlyBTCValues, "#btc_results_table");
