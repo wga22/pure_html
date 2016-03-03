@@ -64,7 +64,15 @@
 			for(var y = 0; y < 50; y++)
 			{
 				//we dont care much about accuracy of the data, just want to get reasonable averages
-				oMonthlyBTCValues[sYM].addVals(10,4070461533910);
+				//https://bitcoinwisdom.com/bitcoin/difficulty
+				/*
+				
+Date	Difficulty	Change	Hash Rate
+Feb 19 2016	163,491,654,909	13.44%	1,170,318,852 GH/s
+Feb 07 2016	144,116,447,847	20.06%	1,031,625,717 GH/s
+Jan 26 2016	120,033,340,651	5.89%	859,232,121 GH/s
+*/
+				oMonthlyBTCValues[sYM].addVals(10,4070461533910,120033340651);
 			}
 		}
 	}
@@ -210,7 +218,7 @@ function getCurrentData()
 	{
 		var nDiff = parseFloat(data)
 		nBalanceCurr = data;
-		$('#balancemBTC').html("" + (nBalanceCurr * NBTCFACTOR * 1000));
+		$('#balancemBTC').html("" + round2(nBalanceCurr * NBTCFACTOR * 1000));
 		getBTCRate();
 	});
 /*
@@ -237,6 +245,7 @@ function getCurrentData()
  function BTCResults()
  {
 	var THSDIGITS = 1000000000000;
+	var NMINDIFF = 100013252236;
 	this.minDiff = 90071992547409;
 	this.maxDiff = 0;
 	this.maxBal=0;
@@ -302,7 +311,7 @@ function getCurrentData()
 			this.minBal = Math.min(nBal, this.minBal);
 			this.maxBal = Math.max(nBal, this.maxBal);
 		}
-		if(validnum(nDifficulty))
+		if(validnum(nDifficulty) && nDifficulty > NMINDIFF)
 		{
 			this.minDiff = Math.min(nDifficulty, this.minDiff);
 			this.maxDiff = Math.max(nDifficulty, this.maxDiff);			
