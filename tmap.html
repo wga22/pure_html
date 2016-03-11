@@ -412,12 +412,16 @@ function computeAge()
 	
 	function _addEstRange(nCurrRange, nLevel)
 	{
-		return aEstRange.push((nCurrRange / (nLevel*.01)))
+		//values seem more consistent when battery level is same
+		if(nLevel==90) 
+			{	return aEstRange.push((nCurrRange / (nLevel*.01))) }
 	}
 	
 	function _addIdealRange(nCurrRange, nLevel)
 	{
-		return aIdealRange.push((nCurrRange / (nLevel*.01)))
+		//values seem more consistent when battery level is same
+		if(nLevel==90)
+			{return aIdealRange.push((nCurrRange / (nLevel*.01)))}
 	}
 
 	function _avgEstRange()
