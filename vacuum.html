@@ -8,12 +8,22 @@
   #container { height: 95%; width: 100%; display: table; }
   #inner { vertical-align: middle; display: table-cell; }
   #btc_results_table{ background-color:lightblue;}
-</style>
+
+  .ct-series-a .ct-slice-pie {
+  stroke: blue;
+  /* outline width */
+  stroke-width: 4px;
+}
+  </style>
 	<link href="https://cdn.datatables.net/1.10.9/css/jquery.dataTables.min.css" rel="stylesheet" title="data tables"/>
 
     <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
 	<script type="text/javascript" src="https://cdn.datatables.net/1.10.9/js/jquery.dataTables.min.js"></script>
 
+	<!-- css and js for chartist: http://gionkunz.github.io/chartist-js/getting-started.html -->
+    <link rel="stylesheet" href="http://cdn.jsdelivr.net/chartist.js/latest/chartist.min.css">
+    <script src="http://cdn.jsdelivr.net/chartist.js/latest/chartist.min.js"></script>
+	
 	<script type='text/javascript'>
 	//more APIS : https://blockchain.info/q
 	//<https://code.jquery.com/jquery-1.10.2.js
@@ -35,7 +45,6 @@
 	var NBTCFACTOR = 0.00000001
 	var nUSDperBTC = 0;
 	var nBalanceCurr = 0;
-	var fLastRunning = null;
 
 	function getDateToTSStringFirstDay(a_oDate)
 	{
@@ -122,8 +131,38 @@ function loadAllTheData()
 		$.each(data.feeds, function() 
 		{
 			var nHashRate = parseFloat(this[oFields.HRHASHRATE]); //hourly hash rate
-			fLastRunning = (nHashRate > 0);
-			//$('#debug').append("<li>if running: "+nHashRate+"</li>");
+			//4593,466,543,686.947
+			var NHASHFACTOR = 10000000000;
+			//var NMAXHASHRATE = 500
+			nHashRate = Math.round(nHashRate / NHASHFACTOR);
+			$('#debug').append("<li>if running: "+nHashRate+"</li>");
+			
+
+			 var data = {
+			  series: [nHashRate ]			};
+
+
+	new Chartist.Pie('.ct-chart', data, {
+	  donut: true,
+		startAngle: 0,
+		total: 550,
+	  labelInterfpolationFnc: function(value) {
+		return Math.round(value / NMAXHASHRATE * 100) + '%';
+	  }
+	});
+
+
+			/*
+			if(nLastRunning!=-1)
+			{
+				var sTLight = "stoplight_red.png";
+				if(nLastRunning)
+				{
+					sTLight = "stoplight_green.png";
+				}
+				$('#hashrunning').html("<img src='images/"+sTLight+"' height='60'></img>");
+			}
+			*/
 		})
 	}
 	) //getJSON
@@ -167,18 +206,6 @@ function writeTheValues(oVals, sTable)
         ]
     } );
 	
-	//indicate if running
-	if(fLastRunning!=null)
-	{
-		var sTLight = "stoplight_red.png";
-		if(fLastRunning)
-		{
-			sTLight = "stoplight_green.png";
-		}
-		$('#hashrunning').html("<img src='images/"+sTLight+"' height='60'></img>");
-	}
-	
-
 }
 
  function round2(nNum)
@@ -188,7 +215,7 @@ function writeTheValues(oVals, sTable)
  
  function waitAndWriteVals()
  {
-	if(nLoadedMonths >= NMONTHSTOLOAD && nUSDperBTC > 0 && fLastRunning!=null)
+	if(nLoadedMonths >= NMONTHSTOLOAD && nUSDperBTC > 0)
 	{
 		//writeTheValues();
 		writeTheValues(oMonthlyBTCValues, "#btc_results_table");
@@ -240,8 +267,23 @@ function getCurrentData()
 	waitAndWriteVals();
 	//setTimeout("waitAndWriteVals()", 20000);
 	//setTimeout("writeTheValues()", 20000);
+	//testpie();
  }
 
+ function testpie()
+ {
+	 var data = {
+	  series: [5, 3, 4]
+	};
+
+	var sum = function(a, b) { return a + b };
+
+	new Chartist.Pie('.ct-chart', data, {
+	  labelInterfpolationFnc: function(value) {
+		return Math.round(value / data.series.reduce(sum) * 100) + '%';
+	  }
+	});
+ }
  function BTCResults()
  {
 	var THSDIGITS = 1000000000000;
@@ -339,8 +381,16 @@ function getCurrentData()
   <body onload="main()">
   <p>
 <table style="border-width:1; border-style:solid">
-<tr><th>Current Balance USD</th><th>Current Balance mBTC</th><th>Running</th></tr>
-<tr><td id="balanceUSD">$0.00</td><td id="balancemBTC">0000<td></td><td id="hashrunning">unknown</td></tr>
+<tr>
+	<th>Current Balance USD</th>
+	<th>Current Balance mBTC</th>
+	<th>run rate</th>
+</tr>
+<tr>
+	<td id="balanceUSD">$0.00</td>
+	<td id="balancemBTC">0000</td>
+	<td><div class="ct-chart ct-major-fifth"></div></td>
+</tr>
 </table>
   </p>
 <div class="summer">
@@ -348,5 +398,6 @@ function getCurrentData()
 </div>
 	<ol id="debug">
 	</ol>
+	
 </body>
 </html>
