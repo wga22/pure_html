@@ -2,8 +2,9 @@
 
 <html>
   <head>
-  <title>Bitcoin Mining operations</title>
-<style type="text/css">
+  <title>BTCOP</title>
+<link rel="icon" type="image/png" href="https://cdn3.iconfinder.com/data/icons/wpzoom-developer-icon-set/500/125-512.png">
+  <style type="text/css">
   body { background-color: #eeeeee; }
   #container { height: 95%; width: 100%; display: table; }
   #inner { vertical-align: middle; display: table-cell; }
@@ -70,6 +71,7 @@
 		{
 			var sYM = "2016-2";
 			oMonthlyBTCValues[sYM] = new BTCResults();
+			oMonthlyBTCValues[sYM].resetBalance();
 			for(var y = 0; y < 50; y++)
 			{
 				//we dont care much about accuracy of the data, just want to get reasonable averages
@@ -85,6 +87,11 @@ Jan 26 2016	120,033,340,651	5.89%	859,232,121 GH/s
 			}
 		}
 	}
+	
+	
+	
+	
+	
 function loadAllTheData()
 {
 	//determine the monthly average daily temperature difference when attic is hotter than outside
@@ -167,8 +174,6 @@ function loadAllTheData()
 	}
 	) //getJSON
 	
-	
-	
 }
 
 function writeTheValues(oVals, sTable)
@@ -207,6 +212,57 @@ function writeTheValues(oVals, sTable)
     } );
 	
 }
+function loadRealTimeData()
+{
+	//return, doesnt work since not allowed cross site domain
+	return;
+
+/*
+		{"STAMP":"1458169745",
+		"lastbc":"1458169336"
+		,"lastheight":"402995",
+		"currndiff":"158427203767.4"
+		,"lastblock":"1458141457",
+		"lastblockheight":"402947",
+		"blockacc":"187595141356.0",
+		"blockerr":"905229905.0",
+		"p_hashrate5m":"28855926866256748.000000"
+		,"p_hashrate1hr":"28997797471630644.000000",
+		"u_hashrate5m":"4382054218192.118164"
+		,"u_hashrate1hr":"4479309877220.987305"}
+		*/
+	var miningURL = "https://www.kano.is/index.php?k=api&username=sailormoon&api=d0ba8e8a923d08ce3e50f837cc5770df&json=y&callback=testit";
+
+
+	$.getJSON( miningURL, function( data ) 
+	{
+		$('#debug').append("<li>trying....</li>");		
+		$.each(data, function(key, val)
+		{
+			var latestHash = parseFloat(val["p_hashrate5m"]);	//5 min hashrate
+			latestHash = round2(latestHash / THSDIGITS);
+			$('#debug').append("<li>latest hash: "+latestHash+"</li>");		
+			var nHashRate = parseFloat(data[oFields.HRHASHRATE]); //hourly hash rate
+		})
+	})
+
+
+	/*
+	$.getJSON( miningURL, function( data ) 
+	{
+		$('#debug').append("<li>trying....</li>");		
+		$.each(data, function(key, val)
+		{
+			var latestHash = parseFloat(val["p_hashrate5m"]);	//5 min hashrate
+			latestHash = round2(latestHash / THSDIGITS);
+			$('#debug').append("<li>latest hash: "+latestHash+"</li>");		
+			var nHashRate = parseFloat(data[oFields.HRHASHRATE]); //hourly hash rate
+		})
+	})
+	
+	*/
+}
+
 
  function round2(nNum)
  {
@@ -247,24 +303,14 @@ function getCurrentData()
 		nBalanceCurr = data;
 		$('#balancemBTC').html("" + round2(nBalanceCurr * NBTCFACTOR * 1000));
 		getBTCRate();
-	});
-/*
-	//TODO? var miningURL = "http://www.kano.is/index.php?k=api&username=XXXX&api=XXXX&json=y";
-	$.getJSON( miningURL, function( data ) 
-	{
-		var nDiff = parseFloat(data)
-		nBalanceCurr = data;
-		$('#balancemBTC').html("" + (nBalanceCurr * NBTCFACTOR * 1000));
-		getBTCRate();
-	});
-	*/
-	
+	});	
 }
  function main() 
  {
 	getCurrentData();
 	loadAllTheData();
 	waitAndWriteVals();
+	//loadRealTimeData();
 	//setTimeout("waitAndWriteVals()", 20000);
 	//setTimeout("writeTheValues()", 20000);
 	//testpie();
@@ -284,6 +330,8 @@ function getCurrentData()
 	  }
 	});
  }
+ 
+ 
  function BTCResults()
  {
 	var THSDIGITS = 1000000000000;
@@ -304,6 +352,13 @@ function getCurrentData()
 	this.percentRunning = _perRunning;
 	this.revPerHour = _revBTCPerHour;
 	this.difficultyIncrease = _difficultyIncrease;
+	this.resetBalance = _resetBalance;
+	
+	//allow a min of 0;
+	function _resetBalance()
+	{
+		this.minBal = 0;
+	}
 	
 	function _difficultyIncrease()
 	{
@@ -347,7 +402,7 @@ function getCurrentData()
 			}
 			this.hourlyHashRate += nRate;
 		}
-		if(validnum(nBal))
+		if(validnum(nBal) && nBal>0)
 		{
 			//UNUSED this.balance += nBal;
 			this.minBal = Math.min(nBal, this.minBal);
