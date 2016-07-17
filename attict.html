@@ -1,3 +1,4 @@
+
 <html>
   <head>
   <title>attic temps</title>
@@ -113,13 +114,17 @@ function writeTheValues(oVals, sTable)
 		//$('#debug').append("<li>loading month: "+x+"</li>");
 		
 		var od = oVals[x];
-		aDeltasPerMonth.push([x, round2(od.avgOutdoorTemp()), round2(od.avgAtticTemp()), round2(od.avgTempDiff()),
-			round2(od.avgAtticHumidity()),od.nCount])
+		if(od.nCount>50)
+		{
+			aDeltasPerMonth.push([x, round2(od.avgOutdoorTemp()), round2(od.avgAtticTemp()), round2(od.avgTempDiff()),
+				round2(od.avgAtticHumidity()),od.nCount])
+		}
 	}
 
 	//write out the table
 	$(sTable).DataTable( {
         data: aDeltasPerMonth,
+		iDisplayLength:24,
         columns: [
             { title: "Date" },
             { title: "Avg. Outdoor" },
