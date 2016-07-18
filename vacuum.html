@@ -148,7 +148,6 @@ function loadAllTheData()
 			 var data = {
 			  series: [nHashRate ]			};
 
-
 	new Chartist.Pie('.ct-chart', data, {
 	  donut: true,
 		startAngle: 0,
@@ -157,8 +156,6 @@ function loadAllTheData()
 		return Math.round(value / NMAXHASHRATE * 100) + '%';
 	  }
 	});
-
-
 			/*
 			if(nLastRunning!=-1)
 			{
@@ -180,12 +177,22 @@ function writeTheValues(oVals, sTable)
 	{
 	//compute the averages for each month, and write it to a dataset for output to a table.
 	var aDeltasPerMonth = [];
+	var aSumRow = ["Total", 0,0,0,0,0,0,0,0];
 	for (var x in oVals)
 	{
 		//$('#debug').append("<li>loading month: "+x+"</li>");
 		
 		var od = oVals[x];
 		var nEarned = (od.balanceGrowth()* NBTCFACTOR)
+		aSumRow[1] += nEarned * nUSDperBTC;
+		aSumRow[2] += nEarned;
+		aSumRow[3] += od.avgHourlyHashRate(true);
+		aSumRow[4] += od.percentRunning();
+		aSumRow[5] += od.revPerHour()*nUSDperBTC*NBTCFACTOR;
+		aSumRow[6] += od.difficultyIncrease();
+		aSumRow[7] += od.nCount;
+		aSumRow[8] += od.operationalCost();
+		
 		aDeltasPerMonth.push([x, 
 			("$" + (round2(nEarned * nUSDperBTC))),
 			round2(nEarned*1000),
@@ -193,8 +200,18 @@ function writeTheValues(oVals, sTable)
 			(round2(od.percentRunning() * 100) + "%"),
 			("$" + round2(od.revPerHour()*nUSDperBTC*NBTCFACTOR)),
 			(round2(od.difficultyIncrease()*100) + "%"),
-			od.nCount]);
+			od.nCount,
+			("$" + round2(od.operationalCost()))]);
 	}
+	var nRows = aDeltasPerMonth.length;
+	aSumRow[1] = round2(aSumRow[1]);
+	aSumRow[2] = round2(aSumRow[2]*1000);
+	aSumRow[3] = round2(aSumRow[3]/nRows);
+	aSumRow[4] = round2(aSumRow[4]*100/nRows) + "%";
+	aSumRow[5] = round2(aSumRow[5]/nRows);
+	aSumRow[6] = round2(aSumRow[6]*100) + "%";
+	aSumRow[8] = "$" + round2(aSumRow[8]);
+	aDeltasPerMonth.push(aSumRow);
 
 	//write out the table
 	$(sTable).DataTable( {
@@ -207,7 +224,8 @@ function writeTheValues(oVals, sTable)
 			{ title: "Time Running" },
 			{ title: "Rev per hour running" },
 			{ title: "Diff Increase"},
-            { title: "# Collected" }
+            { title: "# Collected" },
+			{title: "Op Cost"}
         ]
     } );
 	
@@ -336,6 +354,7 @@ function getCurrentData()
  {
 	var THSDIGITS = 1000000000000;
 	var NMINDIFF = 100013252236;
+	var KWHCost = 0.12;
 	this.minDiff = 90071992547409;
 	this.maxDiff = 0;
 	this.maxBal=0;
@@ -353,6 +372,12 @@ function getCurrentData()
 	this.revPerHour = _revBTCPerHour;
 	this.difficultyIncrease = _difficultyIncrease;
 	this.resetBalance = _resetBalance;
+	this.operationalCost = _opCost;
+	
+	function _opCost()
+	{
+		return this.nCountRunning * KWHCost;
+	}
 	
 	//allow a min of 0;
 	function _resetBalance()
