@@ -89,9 +89,6 @@ Jan 26 2016	120,033,340,651	5.89%	859,232,121 GH/s
 	}
 	
 	
-	
-	
-	
 function loadAllTheData()
 {
 	//determine the monthly average daily temperature difference when attic is hotter than outside
@@ -144,7 +141,6 @@ function loadAllTheData()
 			nHashRate = Math.round(nHashRate / NHASHFACTOR);
 			$('#debug').append("<li>if running: "+nHashRate+"</li>");
 			
-
 			 var data = {
 			  series: [nHashRate ]			};
 
@@ -394,7 +390,7 @@ function getCurrentData()
 	function _revBTCPerHour()
 	{
 		//return _balanceGrowth() / this.nCountRunning
-		return (this.maxBal - this.minBal) / this.nCountRunning
+		return (this.nCountRunning>0 ? ((this.maxBal - this.minBal) / this.nCountRunning) : 0);
 	}
 	
 	function _perRunning()
