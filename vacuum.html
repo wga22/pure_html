@@ -69,7 +69,7 @@
 		$('#debug').append("<li>"+dOldest.toDateString()+" " + dFeb2016.toDateString() +"</li>");
 		if(dFeb2016.getTime() > dOldest.getTime())
 		{
-			var sYM = "2016-2";
+			var sYM = "201602";
 			oMonthlyBTCValues[sYM] = new BTCResults();
 			oMonthlyBTCValues[sYM].resetBalance();
 			for(var y = 0; y < 50; y++)
@@ -115,7 +115,7 @@ function loadAllTheData()
 		
 				if(nBalance >=0 && nHashRate>=-100 )
 				{
-					var sYM = time.getFullYear() + "-" + (time.getMonth()+1);
+					var sYM = getStringYYYYMM(time);
 					if(!oMonthlyBTCValues[sYM])
 					{
 						oMonthlyBTCValues[sYM] = new BTCResults();
@@ -169,6 +169,24 @@ function loadAllTheData()
 	
 }
 
+function getStringYYYYMM(oDate)
+{
+	var sRet = "0000-00";
+	if(oDate && oDate.getMonth())
+	{
+		var nMon = oDate.getMonth() + 1;
+		if(nMon < 10)
+		{
+			sRet =oDate.getFullYear() +  '0' + nMon;
+		}
+		else
+		{
+			sRet =oDate.getFullYear() + '' + nMon;
+		}
+	}
+	return sRet;
+}
+
 function writeTheValues(oVals, sTable)
 	{
 	//compute the averages for each month, and write it to a dataset for output to a table.
@@ -188,16 +206,19 @@ function writeTheValues(oVals, sTable)
 		aSumRow[6] += od.difficultyIncrease();
 		aSumRow[7] += od.nCount;
 		aSumRow[8] += od.operationalCost();
-		
-		aDeltasPerMonth.push([x, 
-			("$" + (round2(nEarned * nUSDperBTC))),
-			round2(nEarned*1000),
-			(round2(od.avgHourlyHashRate(true))),
-			(round2(od.percentRunning() * 100) + "%"),
-			("$" + round2(od.revPerHour()*nUSDperBTC*NBTCFACTOR)),
-			(round2(od.difficultyIncrease()*100) + "%"),
-			od.nCount,
-			("$" + round2(od.operationalCost()))]);
+		if(od.percentRunning() >0 )
+		{
+			
+			aDeltasPerMonth.push([x, 
+				("$" + (round2(nEarned * nUSDperBTC))),
+				round2(nEarned*1000),
+				(round2(od.avgHourlyHashRate(true))),
+				(round2(od.percentRunning() * 100) + "%"),
+				("$" + round2(od.revPerHour()*nUSDperBTC*NBTCFACTOR)),
+				(round2(od.difficultyIncrease()*100) + "%"),
+				od.nCount,
+				("$" + round2(od.operationalCost()))]);
+		} //dont bother writing a row if not running that month
 	}
 	var nRows = aDeltasPerMonth.length;
 	aSumRow[1] = round2(aSumRow[1]);
@@ -212,6 +233,7 @@ function writeTheValues(oVals, sTable)
 	//write out the table
 	$(sTable).DataTable( {
         data: aDeltasPerMonth,
+		iDisplayLength:24,
         columns: [
             { title: "Date" },
 			{ title: "Earned USD" },
