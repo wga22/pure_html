@@ -1,4 +1,5 @@
 
+
 <html>
   <head>
   <title>TMap</title>
@@ -234,9 +235,11 @@
 		}
 	}
 
-	function getYearMonthStr(oDate)
+	function getYearMonthStr(a_oDate)
 	{
-		return oDate.getFullYear() + "-" + (oDate.getMonth()+1);
+		var sMonth = (a_oDate.getMonth() + 1);
+		sMonth = (sMonth < 10)? ("0"+sMonth) : (sMonth + "");
+		return a_oDate.getFullYear() + "-" + (sMonth);
 	}
 function computeAge()
 {
@@ -281,19 +284,29 @@ function computeAge()
 				oEndMonth.getVersion()// version		
 		])
 		*/
-	
+
+		$('#example').dataTable( {
+  "columns": [
+    { "type": "html" },
+    null,
+    null,
+    null,
+    null
+  ]
+} );
+		
 	   $('#batteryTable').DataTable( {
         data: items,
 		iDisplayLength:24,
         columns: [
-            { title: "Year Month"  },
-            { title: "Avg. Ideal Range" },
-            { title: "Ideal Range loss" },
-            { title: "Avg. Est. Range" },
-            { title: "Est. Range Loss" },
-			{ title: "Odometer (miles)" },
-			{ title: "Miles Driven" },
-			{ title: "Version" }
+            { title: "Year Month", "type": "string"  },
+            { title: "Avg. Ideal Range", "type": "num" },
+            { title: "Ideal Range loss", "type": "num-fmt" },
+            { title: "Avg. Est. Range", "type": "num" },
+            { title: "Est. Range Loss", "type": "num-fmt" },
+			{ title: "Odometer (miles)", "type": "num" },
+			{ title: "Miles Driven", "type": "num" },
+			{ title: "Version", "type": "string" }
         ]
 		} );
 	
@@ -513,8 +526,9 @@ callback (string) Function name to be used for JSONP cross-domain requests (opti
 			<h3>Range Information - Monthly Values</h3>
 			<table id="batteryTable" class="display" width="80%"></table>
 		</div>
-		<h3>Miscelaneous Data</h3>
+		<h3>Miscellaneous Data</h3>
 		<ul id="debug"></ul>
+		More on <a href="https://thingspeak.com/channels/39919/private_show">thingspeak</a>.
 	</body>
 	<script async defer
         src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCg7dti-2ObZtnU9z_-5teyfyLCUajMur4&signed_in=true&callback=initMap"></script>

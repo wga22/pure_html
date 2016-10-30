@@ -1,5 +1,6 @@
 
 
+
 <html>
   <head>
   <title>BTCOP</title>
@@ -8,13 +9,15 @@
   body { background-color: #eeeeee; }
   #container { height: 95%; width: 100%; display: table; }
   #inner { vertical-align: middle; display: table-cell; }
-  #btc_results_table{ background-color:lightblue;}
+  #btc_results_table{ background-color:lightblue}
+  #btc_summary_table{ background-color:#FF44FF;}
 
   .ct-series-a .ct-slice-pie {
   stroke: blue;
   /* outline width */
   stroke-width: 4px;
 }
+
   </style>
 	<link href="https://cdn.datatables.net/1.10.9/css/jquery.dataTables.min.css" rel="stylesheet" title="data tables"/>
 
@@ -228,23 +231,30 @@ function writeTheValues(oVals, sTable)
 	aSumRow[5] = round2(aSumRow[5]/nRows);
 	aSumRow[6] = round2(aSumRow[6]*100) + "%";
 	aSumRow[8] = "$" + round2(aSumRow[8]);
-	aDeltasPerMonth.push(aSumRow);
 
+	var aCols = [
+            { title: "Date" , "type": "string" },
+			{ title: "Earned USD" , "type": "num" },
+			{ title: "Earned mBTC" , "type": "num" },
+			{ title: "Average Hashrate (THs)" , "type": "num" },
+			{ title: "Time Running" , "type": "num-fmt" },
+			{ title: "Rev per hour running", "type": "num-fmt"  },
+			{ title: "Diff Increase", "type": "num-fmt" },
+            { title: "# Collected" , "type": "num" },
+			{title: "Op Cost", "type": "num" }
+        ];
+	//write out the summary table
+	$('#btc_summary_table').DataTable( {
+        data: [aSumRow],
+		iDisplayLength:24,
+		columns: aCols
+    } );
+	
 	//write out the table
 	$(sTable).DataTable( {
         data: aDeltasPerMonth,
 		iDisplayLength:24,
-        columns: [
-            { title: "Date" },
-			{ title: "Earned USD" },
-			{ title: "Earned mBTC" },
-			{ title: "Average Hashrate (THs)" },
-			{ title: "Time Running" },
-			{ title: "Rev per hour running" },
-			{ title: "Diff Increase"},
-            { title: "# Collected" },
-			{title: "Op Cost"}
-        ]
+        columns: aCols
     } );
 	
 }
@@ -477,8 +487,8 @@ function getCurrentData()
 </head>
 
   <body onload="main()">
-  <p>
-<table style="border-width:1; border-style:solid">
+  <p style="align: middle;width:100%">
+<table style="border-width:1; border-style:solid;align: middle;width:80%">
 <tr>
 	<th>Current Balance USD</th>
 	<th>Current Balance mBTC</th>
@@ -490,8 +500,10 @@ function getCurrentData()
 	<td><div class="ct-chart ct-major-fifth"></div></td>
 </tr>
 </table>
+
   </p>
-<div class="summer">
+<div>
+	<table id="btc_summary_table" class="display" width="80%"></table>
 	<table id="btc_results_table" class="display" width="80%"></table>
 </div>
 	<ol id="debug">
