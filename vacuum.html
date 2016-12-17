@@ -358,7 +358,7 @@ function loadRealTimeData()
 		}
 		else
 		{
-			$('#debug').append("<li>Issue getting the BPC price from <a href=\"" +sURLRateJSON + \" target=\"_blank\">BPC</a></li>");
+			$('#debug').append("<li>Issue getting the BPC price from <a href=\"" +sURLRateJSON + "\" target=\"_blank\">BPC</a></li>");
 		}
 	});
 }
@@ -371,18 +371,14 @@ function getCurrentData()
 		var nDiff = parseFloat(data)
 		nBalanceCurr = data;
 		$('#balancemBTC').html("" + round2(nBalanceCurr * NBTCFACTOR * 1000));
+		getBTCRateJSON();
 	});	
 }
  function main() 
  {
 	getCurrentData();
-	getBTCRateJSON();
 	loadAllTheData();
 	waitAndWriteVals();
-	//loadRealTimeData();
-	//setTimeout("waitAndWriteVals()", 20000);
-	//setTimeout("writeTheValues()", 20000);
-	//testpie();
  }
 
  function testpie()
