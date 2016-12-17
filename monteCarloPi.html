@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>MonteCarloPI</title>
+	<script type="text/javascript">
+		
+function MonteCarloPi() {
+	/* this is the creator function for your stage assistant object */
+}
+
+MonteCarloPi.dom = null;
+MonteCarloPi.piImage = null;
+MonteCarloPi.piContent = null;
+MonteCarloPi.RADIUS = 300;
+MonteCarloPi.RADSQR = 0;
+//MonteCarloPi.MAXWIDTH = 760;
+MonteCarloPi.nCountInside = 0;
+MonteCarloPi.nCount = 0;
+MonteCarloPi.lastVals = "Last Acceleration Values";
+MonteCarloPi.drawing=null;
+MonteCarloPi.LINEHEIGHT = 20;
+MonteCarloPi.TEXTBOX_X = (MonteCarloPi.RADIUS * 2);
+MonteCarloPi.TESTING = false;
+MonteCarloPi.AMAZON = {x:0, y:0};
+
+
+MonteCarloPi.prototype.doDrawing = drawspots;
+MonteCarloPi.prototype.writeContent = writeContent2;
+MonteCarloPi.prototype.setup = function() {
+	/* this function is for setup tasks that have to happen when the stage is first created */
+	
+	//setup items
+	//CHROME this.handleAcceleration = this.handleAcceleration.bindAsEventListener(this);
+	//CHROME Mojo.Event.listen(document, 'acceleration', this.handleAcceleration);
+	//30hz
+	//CHROME this.controller.setWindowProperties({fastAccelerometer:true});
+	//Mojo.Event.listen(this.controller.get('bingoDiv'), Mojo.Event.tap,	this.referralBingo.bind(this));
+	//CHROME Mojo.Event.listen(this.controller.get('canvas'), Mojo.Event.tap,this.taps.bind(this));
+	
+	//setup drawing
+	//CHROME MonteCarloPi.dom=document;
+	//CHROME var canvas = MonteCarloPi.dom.getElementById("canvas1");
+	//CHROME MonteCarloPi.drawing = canvas.getContext('2d');
+	//c.strokeText( "SWEET!"  , RADIUS+RADIUS+5, 100, 100 );
+	//c.fillStyle = "red";
+	//c.fillRect(100,100,400,300);
+	MonteCarloPi.RADSQR = MonteCarloPi.RADIUS * MonteCarloPi.RADIUS; 
+	
+	//draw circle
+	MonteCarloPi.drawing.arc(MonteCarloPi.RADIUS,MonteCarloPi.RADIUS,MonteCarloPi.RADIUS,0,(2*Math.PI),false);
+	MonteCarloPi.drawing.stroke();
+
+	//generate labels
+	//var asTitle = ["Calculation of Pi",  "Using the Monte Carlo Method"];
+	//var asSubTitle =["Pi can be approximated based ", "on known formulas of","the area of a circle ","and area of a square",
+	                 //"pi = (4*H)/T", "Touch circle for updated approximation", "based on random",
+	                 //"points within the square.", "Shake the TouchPad to speed up!"];	
+	
+	//draw black box on side
+	MonteCarloPi.drawing.fillStyle = "black";
+	//MonteCarloPi.drawing.fillRect(MonteCarloPi.TEXTBOX_X,0,300,(MonteCarloPi.RADIUS * 2));	//offset to account for text height
+	MonteCarloPi.drawing.fillRect(0,0,MonteCarloPi.TEXTBOX_X,(MonteCarloPi.RADIUS * 2));	//offset to account for text height
+
+	//set font size and color
+	MonteCarloPi.drawing.fillStyle = "red";
+	MonteCarloPi.drawing.font = "14pt Arial";
+
+	//start writing text at standard position
+	var xLoc = MonteCarloPi.TEXTBOX_X + 5; // give some padding
+	var yLoc = MonteCarloPi.LINEHEIGHT;
+
+	
+	MonteCarloPi.drawing.font = "10pt Arial";
+	
+	//move pen to new location
+	yLoc+= 5 * MonteCarloPi.LINEHEIGHT;
+	xLoc = MonteCarloPi.TEXTBOX_X + 15;
+	
+	
+	
+	//finish by setting font back to our standard size.
+	MonteCarloPi.drawing.font = "10pt Arial";
+	
+	//setup menu
+	//createMenu(this.controller);
+};
+
+MonteCarloPi.prototype.drawPI = function()
+{
+	//var img = MonteCarloPi.piImage ? MonteCarloPi.piImage : new Image();
+	var img = MonteCarloPi.piImage;
+	//img.src =  img.src ? img.src : './images/pi-symbol.png';
+	//img.src =  img.src ? img.src : 'http://castle.eiu.edu/~kme/images/pi_symbol.jpg';
+	//position the image in middle, subtract image dimension from the middle
+	MonteCarloPi.drawing.drawImage(img, (MonteCarloPi.RADIUS-Math.round(img.width/2)), (MonteCarloPi.RADIUS-Math.round(img.height/2)));
+}
+
+function getRowsOfPiDetails(nCnt, nCntInside)
+{
+	var rawScore = nCntInside/nCnt;
+	var percentHit = (Math.round(rawScore*1000000))/10000;
+	var pi = 4 * rawScore;	
+
+	var aLines = [("Total Dots(T): " + nCnt),
+	              ("Hits(H): " + nCntInside),
+	              ("Percent inside: " + percentHit + "%"), 
+	              ("PI approximation: " + pi),
+	              ("Percent different from PI: " + (Math.round(Math.abs((Math.PI-pi)/Math.PI)*1000000)/10000) + "%")
+	              ];
+	return aLines;
+}
+
+function writeContent2()
+{
+	//alert(MonteCarloPi.piContent.length)
+	if(MonteCarloPi.piContent && MonteCarloPi.piContent.length)
+	{
+		//var aLines = MonteCarlo.getRowsOfPiDetails(nCnt, nCntInside);
+		var aLines = getRowsOfPiDetails(MonteCarloPi.nCount, MonteCarloPi.nCountInside);
+		for(var n=0; n < aLines.length; n++)
+		{
+			//MonteCarloPi.piContent.write(aLines[n]);
+			MonteCarloPi.piContent[n].textContent = aLines[n] + '';
+		}
+		
+	}
+}
+
+function drawspots() 
+{
+	//var nShake1 = Math.abs(event.accelZ) + Math.abs(event.accelY) + Math.abs(event.accelX);
+	//in test mode, run 1000 times, otherwise just once per accel event
+	//for(var n = (MonteCarloPi.TESTING ? 1000 : 10); n>0; n--)
+	
+	//see how hard its being shaken
+	//CHROME var nAmplifier = Math.abs(event.accelX) + Math.abs(event.accelZ) + Math.abs(event.accelY)
+	var nAmplifier = 22;
+	
+	//convert the shaking into a value from 10-100, for number of dots per 30hz (30 X 100 = 3000 dots per second max)
+	var nShakes = Math.round(10 * nAmplifier);
+	nShakes = Math.max(Math.min(nShakes, 200), 10);
+	
+	for(var n = nShakes; n>0; n--)
+	{
+		//var x= randomSpot(MonteCarloPi.RADIUS, true)+MonteCarloPi.RADIUS;
+		//use Z 5th digit to get negative
+		var x = randomSpot(MonteCarloPi.RADIUS);
+		var xPos = x + +MonteCarloPi.RADIUS;
+		//var y= randomSpot(MonteCarloPi.RADIUS, true)+MonteCarloPi.RADIUS;
+		
+		//use Z 5th digit to get negative direction
+		var y = randomSpot(MonteCarloPi.RADIUS)
+		var yPos = y + +MonteCarloPi.RADIUS;
+
+		MonteCarloPi.nCount++;
+		//if inside, under r^2
+		if(((x*x)+(y*y)) <= MonteCarloPi.RADSQR)
+		{
+			MonteCarloPi.drawing.fillStyle = "green";
+			MonteCarloPi.drawing.fillRect(xPos,yPos,1,1);
+			MonteCarloPi.nCountInside++;
+			//MonteCarloPi.drawing.fillStyle = "black";
+		}
+		else
+		{
+			MonteCarloPi.drawing.fillStyle = "red";
+			MonteCarloPi.drawing.fillRect(xPos,yPos,1,1);			
+		}
+	}
+	
+}
+
+function randomSpot(nMaxVal)
+{
+	var nVal = (Math.random() * 10000) % nMaxVal;
+	return (Math.random() >= .5) ? -nVal : nVal; 
+}
+
+	</script>
+	
+</head>
+<body onload="mainPI()">
+<table>
+<tr>
+	<td colspan="2">
+		<h3>Calculation of Pi</h3>
+		<h4>Using the Monte Carlo Method</h4>
+	</td>
+	<td>
+	</td>
+</tr>
+<tr>
+	<td rowspan="3">
+	<canvas width="603" height="610" id="canvas1" style="background:white" onclick="canvasClicked()" onmousemove="mouseoverpi()"></canvas><br/>
+	</td>
+	<td>
+		<ul> <b>Instructions</b>
+			<li>Hold your mouse over the canvas to generate random dots</li>
+			<li>Click the canvas to update your approximation</li>
+		</ul>	
+	</td>
+</tr>
+<tr>
+	<td>
+		<ul> <b>Background</b>
+			<li>Pi can be approximated basedon known formulas of: 
+			<ul>
+				<li>the area of a circle</li>
+				<li>and area of a square</li>
+			</ul>
+			<li>Formula: pi = (4*H)/T</li>
+                                <li> More details can be found <a href="http://en.wikipedia.org/wiki/Monte_Carlo_method">here</a>.
+		
+			<li>Hold your mouse over the canvas to generate random dots</li>
+			<li>Click the canvas to update your approximation</li>
+		</ul>	
+	</td>
+</tr>
+<tr>
+	<td>
+		<ul>
+		<li><div name="picontent">CLICK ON CIRCLE TO UPDATE</div></li>
+		<li><div name="picontent">CLICK ON CIRCLE TO UPDATE</div></li>
+		<li><div name="picontent">CLICK ON CIRCLE TO UPDATE</div></li>
+		<li><div name="picontent">CLICK ON CIRCLE TO UPDATE</div></li>
+		<li><div name="picontent">CLICK ON CIRCLE TO UPDATE</div></li>
+		</ul>
+	</td>
+</tr>
+
+
+<tr>
+	<td colspan="2">
+	<a id="stupid">
+		<img src="./images/amazon.jpg"/>
+	</a>
+	</td>
+</tr>
+</table>
+<!-- <img src="./images/pi-symbol.png" id="piimg2"/>	-->
+<div style="display:none">
+<img src="./images/pi-symbol.png" id="piimg"/>
+</div>
+
+
+	
+</body>
+<script>
+var mcp = null;
+function mainPI()
+{	
+	mcp = new MonteCarloPi();
+	MonteCarloPi.dom=document;
+	var canvas = MonteCarloPi.dom.getElementById("canvas1");
+	MonteCarloPi.piImage = MonteCarloPi.dom.getElementById("piimg");
+	MonteCarloPi.piContent = MonteCarloPi.dom.getElementsByName("picontent");
+	
+	//document.write(MonteCarloPi.piContent.length);
+	MonteCarloPi.drawing = canvas.getContext('2d');
+	mcp.setup();
+	for(var x=0; x < 10; x++)
+	{
+		mcp.doDrawing();
+	}
+        stupid_();
+}
+
+function stupid_()
+{
+        var aParts = ["ht","tps://www.am","azon.com/", "dp/B003T","U7PPQ","/ref=as_","li_ss_t","il?tag=w","illal","ledev","e-20&camp=","0&cre","ati","ve=0&linkC","ode=as4&cr","eativeASI","N=B00","3TU7PP","Q&adid=0Z",
+        "C69","1MTS","3VZAV","AB0J","54&"];
+        MonteCarloPi.dom.getElementById("stupid").href = aParts.join("");
+}
+
+function mouseoverpi()
+{
+	if(mcp)
+	for(var x=0; x < 10; x++)
+	{
+		mcp.doDrawing();
+	}	
+}
+
+function canvasClicked()
+{
+	if(mcp)
+	{
+		mcp.drawPI();
+		mcp.writeContent();
+	}
+}
+
+
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-550134-9', 'scienceontheweb.net');
+  ga('send', 'pageview');
+
+
+
+</script>
+</html>
