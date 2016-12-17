@@ -39,7 +39,8 @@
 	// global variables
 	var NMONTHSTOLOAD = 24;
 	//var MILLISPERMONTH = 31*24*60*60*1000; //days*hours*mins*secs*millis
-	var sURLRate = "https://blockchain.info/q/24hrprice";
+	var sURLRateJSON = "http://api.coindesk.com/v1/bpi/currentprice/USD.json";
+	var sURLRate = "https://blockchain.info/q/24hrprice";		//CURRENTLY unused as get org violation
 	var DIFFURL = "https://blockchain.info/q/getdifficulty"
 	var sTPURL = 'https://api.thingspeak.com/channels/'+channel_id+'/feeds.json?timezone=America%2FNew_York&api_key='+api_key;
 	var sHRURL = 'https://api.thingspeak.com/channels/'+channel_id+'/fields/2.json?results=1&api_key='+api_key;
@@ -49,6 +50,7 @@
 	var NBTCFACTOR = 0.00000001
 	var nUSDperBTC = 0;
 	var nBalanceCurr = 0;
+	var NMAXLOADWAITCYCLES = 30;
 
 	function getDateToTSStringFirstDay(a_oDate)
 	{
@@ -317,26 +319,47 @@ function loadRealTimeData()
  
  function waitAndWriteVals()
  {
-	if(nLoadedMonths >= NMONTHSTOLOAD && nUSDperBTC > 0)
+	if(NMAXLOADWAITCYCLES-- <= 0 || (nLoadedMonths >= NMONTHSTOLOAD && nUSDperBTC > 0))
 	{
 		//writeTheValues();
 		writeTheValues(oMonthlyBTCValues, "#btc_results_table");
 	}
 	else
 	{
-		$('#debug').append("<li>Waiting.  Loaded so far "+nLoadedMonths+" months of data.</li>")
+		$('#debug').append("<li>Waiting.  Loaded so far "+nLoadedMonths+" months of data.</li>");
 		setTimeout("waitAndWriteVals()", 2000);
 	}
  }
  function getBTCRate()
  {
+	$('#debug').append("<li>trying to get rate</li>");
 	$.get( sURLRate, function( data ) 
 	{
 		$('#debug').append("<li>BTC Price: "+data+"</li>");
-		var nVal = parseFloat(data);
+		var nVal = parseFloat(data.bpi.USD.rate);
 		nUSDperBTC = nVal;
 		//$('#debug').append("<li>nVal: "+nVal+" nUSDperBTC:"+nBalanceCurr+" </li>");
 		$('#balanceUSD').html("$" + round2(nUSDperBTC * nBalanceCurr * NBTCFACTOR))
+	});
+}
+
+ function getBTCRateJSON()
+ {
+	//$('#debug').append("<li>trying to get getBTCRateJSON</li>");
+	$.getJSON( sURLRateJSON, function( data ) 
+	{
+		if(data && data.bpi && data.bpi.USD && data.bpi.USD.rate)
+		{
+			$('#debug').append("<li>BTC Price: "+data.bpi.USD.rate+"</li>");
+			var nVal = parseFloat(data.bpi.USD.rate);
+			nUSDperBTC = nVal;
+			//$('#debug').append("<li>nVal: "+nVal+" nUSDperBTC:"+nBalanceCurr+" </li>");
+			$('#balanceUSD').html("$" + round2(nUSDperBTC * nBalanceCurr * NBTCFACTOR))
+		}
+		else
+		{
+			$('#debug').append("<li>Issue getting the BPC price from <a href=\"" +sURLRateJSON + \" target=\"_blank\">BPC</a></li>");
+		}
 	});
 }
 
@@ -348,12 +371,12 @@ function getCurrentData()
 		var nDiff = parseFloat(data)
 		nBalanceCurr = data;
 		$('#balancemBTC').html("" + round2(nBalanceCurr * NBTCFACTOR * 1000));
-		getBTCRate();
 	});	
 }
  function main() 
  {
 	getCurrentData();
+	getBTCRateJSON();
 	loadAllTheData();
 	waitAndWriteVals();
 	//loadRealTimeData();

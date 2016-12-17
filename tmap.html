@@ -427,14 +427,14 @@ function computeAge()
 	function _addEstRange(nCurrRange, nLevel)
 	{
 		//values seem more consistent when battery level is same
-		if(nLevel==90) 
+		if(nLevel>=85 && nLevel <= 91) 
 			{	return aEstRange.push((nCurrRange / (nLevel*.01))) }
 	}
 	
 	function _addIdealRange(nCurrRange, nLevel)
 	{
 		//values seem more consistent when battery level is same
-		if(nLevel==90)
+		if(nLevel>=85 && nLevel <= 91)
 			{return aIdealRange.push((nCurrRange / (nLevel*.01)))}
 	}
 
@@ -521,13 +521,13 @@ callback (string) Function name to be used for JSONP cross-domain requests (opti
 </head>
 
 	<body>
+		<h3>Miscellaneous Data</h3>
+		<ul id="debug"></ul>
 		<div id="map"></div>
 		<div id="rangeTable">
 			<h3>Range Information - Monthly Values</h3>
 			<table id="batteryTable" class="display" width="80%"></table>
 		</div>
-		<h3>Miscellaneous Data</h3>
-		<ul id="debug"></ul>
 		More on <a href="https://thingspeak.com/channels/39919/private_show">thingspeak</a>.
 	</body>
 	<script async defer
