@@ -42,6 +42,7 @@
 	var sURLRateJSON = "http://api.coindesk.com/v1/bpi/currentprice/USD.json";
 	var sURLRate = "https://blockchain.info/q/24hrprice";		//CURRENTLY unused as get org violation
 	var DIFFURL = "https://blockchain.info/q/getdifficulty"
+	//https://api.thingspeak.com/channels/89240/feeds.json?timezone=America%2FNew_York&api_key=5EYUC2WVZN0T2ALY
 	var sTPURL = 'https://api.thingspeak.com/channels/'+channel_id+'/feeds.json?timezone=America%2FNew_York&api_key='+api_key;
 	var sHRURL = 'https://api.thingspeak.com/channels/'+channel_id+'/fields/2.json?results=1&api_key='+api_key;
 	var oFields = {BALANCE: "field1", HRHASHRATE: "field2", DIFFICULTY: "field3"};
@@ -177,7 +178,7 @@ function loadAllTheData()
 function getStringYYYYMM(oDate)
 {
 	var sRet = "0000-00";
-	if(oDate && oDate.getMonth())
+	if(oDate && oDate.getMonth()>=0)
 	{
 		var nMon = oDate.getMonth() + 1;
 		if(nMon < 10)
@@ -350,8 +351,9 @@ function loadRealTimeData()
 	{
 		if(data && data.bpi && data.bpi.USD && data.bpi.USD.rate)
 		{
-			$('#debug').append("<li>BTC Price: "+data.bpi.USD.rate+"</li>");
-			var nVal = parseFloat(data.bpi.USD.rate);
+			var sBTCUSD = data.bpi.USD.rate;
+			$('#debug').append("<li>BTC Price: "+sBTCUSD+"</li>");
+			var nVal = parseFloat(sBTCUSD.replace(',', ''));
 			nUSDperBTC = nVal;
 			//$('#debug').append("<li>nVal: "+nVal+" nUSDperBTC:"+nBalanceCurr+" </li>");
 			$('#balanceUSD').html("$" + round2(nUSDperBTC * nBalanceCurr * NBTCFACTOR))
