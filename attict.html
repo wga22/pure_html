@@ -1,4 +1,5 @@
 
+
 <html>
   <head>
   <title>attic temps</title>
@@ -8,12 +9,18 @@
   #inner { vertical-align: middle; display: table-cell; }
   .winter { background-color:lightblue;}
   .summer{ background-color:pink;}
+  .ct-series-b .ct-line {  stroke: blue;  stroke-width: 5px; stroke-dasharray: 10px 20px;}
+  
 </style>
 	<link href="https://cdn.datatables.net/1.10.9/css/jquery.dataTables.min.css" rel="stylesheet" title="data tables"/>
 
     <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
 	<script type="text/javascript" src="https://cdn.datatables.net/1.10.9/js/jquery.dataTables.min.js"></script>
 
+	<!-- css and js for chartist: http://gionkunz.github.io/chartist-js/getting-started.html -->
+    <link rel="stylesheet" href="http://cdn.jsdelivr.net/chartist.js/latest/chartist.min.css">
+    <script src="http://cdn.jsdelivr.net/chartist.js/latest/chartist.min.js"></script>
+	
 	<script type='text/javascript'>
 
 	//<https://code.jquery.com/jquery-1.10.2.js
@@ -24,16 +31,16 @@
 	var api_key = 'WE0B76XWWVYWGVH7';
 	var NRESULTS = 3000;	//number of results to load per month
 	// global variables
-	var NMONTHSTOLOAD = 24;
+	var NMONTHSTOLOAD = 36;
 	var NMAXWINTERTEMP = 40;	//how hot it needs to be in winter to track
-	var NMAXSUMMERTEMP = 75; // how hot it needs to be in summer to track
+	var NMAXSUMMERTEMP = 70; // how hot it needs to be in summer to track
 	var NTHRESHOLD = 10;	//some filter to keep low variances out
 	var MILLISPERMONTH = 31*24*60*60*1000; //days*hours*mins*secs*millis
 	var sTPURL = 'https://api.thingspeak.com/channels/'+channel_id+'/feeds.json?timezone=America%2FNew_York&api_key='+api_key;
 	var oFields = {ATTIC_TEMP: "field1", INTERNET_TEMP:"field3", HUMIDITY: "field2"};
-	var oDeltasPerSummerMonth = {};
-	var oDeltasPerWinterMonth = {};
+	var oDeltasPerMonth = {};
 	var nLoadedMonths = 1;
+	
 function getDateToTSStringFirstDay(a_oDate)
 {
 	//YYYY-MM-DD%20HH:NN:SS
@@ -45,6 +52,14 @@ function getDateToTSStringFirstDay(a_oDate)
 	sMonth = (sMonth < 10)? ("0"+sMonth) : (sMonth + "");
 	return (a_oDate.getFullYear()+0) + "-" + sMonth + "-01%2000:00:00"
 }
+
+function getShortDateString(a_oDate)
+{
+	var sMonth = (a_oDate.getMonth() + 1);
+	sMonth = (sMonth < 10)? ("0"+sMonth) : (sMonth + "");
+	return a_oDate.getFullYear() + "-" + sMonth;
+}
+
 
 function computeTempDeltas()
 {
@@ -70,31 +85,20 @@ function computeTempDeltas()
 				var time = new Date(this["created_at"]);
 				//$('#debug').append("<li>"+nAtticT+"</li>");
 
-
-
 				//var time = this["created_at"]
 				if(nAtticT && nOutdoorT && nOutdoorT!=-1 )
 				{
 					//winter - figure out how much hotter the attic is staying on cold days - due to furnace wasting heat.
 					//summer - figure how much hotter attic is staying on hot days - due to sun heating
-					var sYM = time.getFullYear() + "-" + (time.getMonth()+1);					
-					if(nOutdoorT <= NMAXWINTERTEMP)
+					var sYM = getShortDateString(time);					
+					if(nOutdoorT <= NMAXWINTERTEMP || nOutdoorT >= NMAXSUMMERTEMP)
 					{
 						//start storing data for a new month
-						if(!oDeltasPerWinterMonth[sYM])
+						if(!oDeltasPerMonth[sYM])
 						{
-							oDeltasPerWinterMonth[sYM] = new TemperatureResults();
+							oDeltasPerMonth[sYM] = new TemperatureResults();
 						}
-						oDeltasPerWinterMonth[sYM].addTemperatures(nOutdoorT,nAtticT,nAtticHumidity);
-					}
-					else if( nOutdoorT >= NMAXSUMMERTEMP ) //&& (nOutdoorT+NTHRESHOLD) < nAtticT 
-					{
-						//start storing data for a new month
-						if(!oDeltasPerSummerMonth[sYM])
-						{
-							oDeltasPerSummerMonth[sYM] = new TemperatureResults();
-						}
-						oDeltasPerSummerMonth[sYM].addTemperatures(nOutdoorT,nAtticT,nAtticHumidity);
+						oDeltasPerMonth[sYM].addTemperatures(nOutdoorT,nAtticT,nAtticHumidity);
 					}
 				}
 			})
@@ -120,7 +124,7 @@ function writeTheValues(oVals, sTable)
 				round2(od.avgAtticHumidity()),od.nCount])
 		}
 	}
-
+	drawTheChartOfDiffs(aDeltasPerMonth);
 	//write out the table
 	$(sTable).DataTable( {
         data: aDeltasPerMonth,
@@ -147,14 +151,8 @@ function writeTheValues(oVals, sTable)
 	if(nLoadedMonths >= NMONTHSTOLOAD)
 	{
 		//writeTheValues();
-		writeTheValues(oDeltasPerSummerMonth, "#summer_temp_table");
-		writeTheValues(oDeltasPerWinterMonth, "#winter_temp_table")
-		/*
-		for(var x in oDeltasPerMonth)
-		{
-			$('#debug').append("<li>"+oDeltasPerMonth[x].avgOutdoorTemp()+"</li>")
-		}
-		*/
+		writeTheValues(oDeltasPerMonth, "#summer_temp_table");
+		
 	}
 	else
 	{
@@ -162,6 +160,66 @@ function writeTheValues(oVals, sTable)
 		setTimeout("waitAndWriteVals()", 2000);
 	}
  }
+ 
+ function drawTheChartOfDiffs(a_aDiffData)
+ {
+	function compareRows(a,b)
+	{
+		var nA = parseInt(a[0].replace('-', ''));
+		var nB = parseInt(b[0].replace('-', ''));
+		return nA < nB ? -1 : 1;
+	}
+	// {labels: [x,z,y], series [[1,2,3],[4,5,6]]}
+	//var oChartData = {};
+	var aLabels = [];
+	var aResults = [];
+	var aTemps = [];
+	var aVals = a_aDiffData.sort(compareRows)
+	//aDeltasPerMonth.push([x, round2(od.avgOutdoorTemp()), round2(od.avgAtticTemp()), round2(od.avgTempDiff()), round2(od.avgAtticHumidity()),od.nCount])
+	for(var x = 12; x <a_aDiffData.length; x++ )
+	{
+		aLabels.push(a_aDiffData[x][0]);//first field is the label
+		var nDiff = a_aDiffData[x][3] - a_aDiffData[x-12][3];
+		aResults.push(nDiff)
+		aTemps.push(a_aDiffData[x][1] - a_aDiffData[x-12][1])
+		//aResults.push(a_aDiffData[x][3])
+	}
+	
+	
+	var options = 
+	{
+		// Don't draw the line chart points
+		showPoint: true,
+		// Disable line smoothing
+		lineSmooth: false,
+		width: 1000,
+		height: 400,
+		// X-Axis specific configuration
+		axisX: 
+		{
+			// We can disable the grid for this axis
+			showGrid: true,
+			// and also don't show the label
+			showLabel: true
+		},
+		// Y-Axis specific configuration
+		axisY: 
+		{
+			// Lets offset the chart a bit from the labels
+			offset: 60
+			// The label interpolation function enables you to modify the values
+			// used for the labels on each axis. Here we are converting the
+			// values into million pound.
+			//,labelInterpolationFnc: function(value) {return value }
+		}
+	};
+	
+	var oChart = new Chartist.Line('#tempDiffChart', {labels: aLabels, series: [aResults, aTemps]}, options);
+	//var oChart = new Chartist.Line('#tempDiffChart', {labels: ['asdf', 'werww'], series: [[1,2]]}, {});
+ }
+ 
+ 
+ 
  function main() 
  {
 	$("#winterMax").html(NMAXWINTERTEMP);
@@ -255,11 +313,16 @@ function writeTheValues(oVals, sTable)
 	</br>
 	More data details are available on <a href="https://thingspeak.com/channels/39741">ThingSpeak</a>.
   </p>
-<div class="summer">Summer Temps
+  
+ <H3>Year Over Year Temperature Change by Month</H3>
+<div id="tempDiffChart" class="ct-series-a ct-line"></div>
+ <ul>
+ <li>Red - change in indoor/outdoor temp - Negative good</li>
+ <li>Dotted Orange - change in outdoor temp - negative shows lower value from 12 months prior</li>
+ </ul>
+<div class="summer">
+  <H3>Attic Temperature Data</H3>
 	<table id="summer_temp_table" class="display" width="80%"></table>
-</div>
-<div class="winter">Winter Temps
-	<table id="winter_temp_table" class="display" width="80%"></table>
 </div>
 
 	<ol id="debug">
