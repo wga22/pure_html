@@ -1,0 +1,51 @@
+<html>
+  <head>
+
+  <title>jsontest</title>
+
+<style type="text/css">
+  body { background-color: #ddd; }
+  #container { height: 100%; width: 100%; display: table; }
+</style>
+
+	<script src="https://code.jquery.com/jquery-1.10.2.js"></script>
+		<script type='text/javascript'>
+
+function NHLSeason(a_dDate)
+{
+	var sYear1 = 1900 + (a_dDate.getMonth() < 7 ? (a_dDate.getYear()-1)  : (a_dDate.getYear())); 
+	var sYear2 = 1900 + (a_dDate.getMonth() < 7 ? (a_dDate.getYear()) : (a_dDate.getYear()+1));
+	return sYear1 +""+ sYear2;
+}
+		
+function loadGames()
+{
+//https://www.reddit.com/r/nhl/comments/2i13xa/places_to_get_raw_statistics/
+	//http://live.nhl.com/GameData/SeasonSchedule-20162017.json
+	//http://live.nhl.com/GameData/SeasonSchedule-21162117.json
+	var sYears =  NHLSeason(new Date());
+	var sSchedule = "http://live.nhl.com/GameData/SeasonSchedule-"+sYears+".json"
+	$( "<hr>" ).text( sSchedule ).appendTo( "#listOfGames" );
+	$.getJSON( sSchedule)
+	.done(function( data )
+	{
+		$.each( data.items, function( i, item ) 
+		{
+			$( "<hr>" ).text( item.a + " vs. " +item.h).appendTo( "#listOfGames" );
+			/*
+			if ( i === 3 ) 
+			{
+			return false;
+			}*/
+		});
+	});
+}
+ 
+</script>  
+</head>
+
+  <body onload="loadGames()">
+	<div id="listOfGames"></div>
+  </body>
+</html>
+
