@@ -198,6 +198,7 @@ function writeTheValues(oVals, sTable)
 	//compute the averages for each month, and write it to a dataset for output to a table.
 	var aDeltasPerMonth = [];
 	var aSumRow = ["Total", 0,0,0,0,0,0,0,0];
+	var diffRange = {nMax:0, nMin:90071992547409}
 	for (var x in oVals)
 	{
 		//$('#debug').append("<li>loading month: "+x+"</li>");
@@ -209,7 +210,9 @@ function writeTheValues(oVals, sTable)
 		aSumRow[3] += od.avgHourlyHashRate(true);
 		aSumRow[4] += od.percentRunning();
 		aSumRow[5] += od.revPerHour()*nUSDperBTC*NBTCFACTOR;
-		aSumRow[6] += od.difficultyIncrease();
+		//aSumRow[6] += od.difficultyIncrease();
+		diffRange.nMax = Math.max(diffRange.nMax, od.maxDiff);
+		diffRange.nMin = Math.min(diffRange.nMin, od.minDiff);
 		aSumRow[7] += od.nCount;
 		aSumRow[8] += od.operationalCost();
 		if(od.percentRunning() >0 )
@@ -232,7 +235,7 @@ function writeTheValues(oVals, sTable)
 	aSumRow[3] = round2(aSumRow[3]/nRows);
 	aSumRow[4] = round2(aSumRow[4]*100/nRows) + "%";
 	aSumRow[5] = round2(aSumRow[5]/nRows);
-	aSumRow[6] = round2(aSumRow[6]*100) + "%";
+	aSumRow[6] = round2((new BTCResults()).difficultyIncrease(diffRange.nMin,diffRange.nMax)*100) + "%";
 	aSumRow[8] = "$" + round2(aSumRow[8]);
 
 	var aCols = [
@@ -434,10 +437,12 @@ function getCurrentData()
 		this.minBal = 0;
 	}
 	
-	function _difficultyIncrease()
+	function _difficultyIncrease(min, max)
 	{
 		//$('#debug').append("<li>"+this.minDiff+" " + this.maxDiff +"</li>");
-		return (this.maxDiff - this.minDiff) / ((this.maxDiff + this.minDiff)/2);
+		min = min ? min : this.minDiff;
+		max = max ? max : this.maxDiff;
+		return (max - min) / ((max + min)/2);
 	}
 	
 	function _revBTCPerHour()
