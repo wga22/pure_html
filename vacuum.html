@@ -371,7 +371,7 @@ function loadRealTimeData()
 function getCurrentData()
 {
 	//163491654908.95926 / 1.6349165490895926E11
-	$.get( "https://blockchain.info/q/addressbalance/1LvvbLXyiNBkQ8vpe3Vgh3YAVmRoi3Q4AP", function( data ) 
+	$.get( "https://blockchain.info/q/addressbalance/xxxxxxxxxxxxx", function( data ) 
 	{
 		var nDiff = parseFloat(data)
 		nBalanceCurr = data;
@@ -381,7 +381,8 @@ function getCurrentData()
 }
  function main() 
  {
-	getCurrentData();
+	//getCurrentData();
+	getBTCRateJSON();
 	loadAllTheData();
 	waitAndWriteVals();
  }
@@ -409,8 +410,8 @@ function getCurrentData()
 	var KWHCost = 0.12;
 	this.minDiff = 90071992547409;
 	this.maxDiff = 0;
-	this.maxBal=0;
-	this.minBal=90071992547409;
+	this.maxBal = 0;
+	this.minBal = 90071992547409;
 	this.hourlyHashRate = 0;
 	this.balance = 0;
 	this.nCount = 0;
@@ -516,13 +517,9 @@ function getCurrentData()
   <p style="align: middle;width:100%">
 <table style="border-width:1; border-style:solid;align: middle;width:80%">
 <tr>
-	<th>Current Balance USD</th>
-	<th>Current Balance mBTC</th>
 	<th>run rate</th>
 </tr>
 <tr>
-	<td id="balanceUSD">$0.00</td>
-	<td id="balancemBTC">0000</td>
 	<td><div class="ct-chart ct-major-fifth"></div></td>
 </tr>
 </table>
