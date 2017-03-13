@@ -125,6 +125,7 @@ function loadAllTheData()
 					if(!oMonthlyBTCValues[sYM])
 					{
 						oMonthlyBTCValues[sYM] = new BTCResults();
+						oMonthlyBTCValues[sYM].MINMIN = .1 / NBTCFACTOR;		//TODO: actually fix the data. filter out any min balances values less than 100mBTC
 					}
 					oMonthlyBTCValues[sYM].addVals(nBalance,nHashRate,nDifficulty);
 				}
@@ -418,6 +419,7 @@ function getCurrentData()
 	this.balance = 0;
 	this.nCount = 0;
 	this.nCountRunning = 0;
+	this.MINMIN = 0;
 	
 	//functions
 	this.addVals = _addVals;
@@ -490,7 +492,7 @@ function getCurrentData()
 			}
 			this.hourlyHashRate += nRate;
 		}
-		if(validnum(nBal) && nBal>0)
+		if(validnum(nBal) && nBal>this.MINMIN)
 		{
 			//UNUSED this.balance += nBal;
 			this.minBal = Math.min(nBal, this.minBal);
