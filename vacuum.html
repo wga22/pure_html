@@ -198,15 +198,16 @@ function writeTheValues(oVals, sTable)
 	//compute the averages for each month, and write it to a dataset for output to a table.
 	var aDeltasPerMonth = [];
 	var aSumRow = ["Total", 0,0,0,0,0,0,0,0];
+	var nMaxEarned = 0;
 	var diffRange = {nMax:0, nMin:90071992547409}
 	for (var x in oVals)
 	{
 		//$('#debug').append("<li>loading month: "+x+"</li>");
 		
 		var od = oVals[x];
-		var nEarned = (od.balanceGrowth()* NBTCFACTOR)
-		aSumRow[1] += nEarned * nUSDperBTC;
-		aSumRow[2] += nEarned;
+		var nEarned = (od.balanceGrowth()* NBTCFACTOR);
+		nMaxEarned = Math.max(od.maxBalance(), nMaxEarned);
+		//[1] and [2] are done all at once
 		aSumRow[3] += od.avgHourlyHashRate(true);
 		aSumRow[4] += od.percentRunning();
 		aSumRow[5] += od.revPerHour()*nUSDperBTC*NBTCFACTOR;
@@ -230,8 +231,9 @@ function writeTheValues(oVals, sTable)
 		} //dont bother writing a row if not running that month
 	}
 	var nRows = aDeltasPerMonth.length;
-	aSumRow[1] = round2(aSumRow[1]);
-	aSumRow[2] = round2(aSumRow[2]*1000);
+	nMaxEarned = NBTCFACTOR * nMaxEarned;
+	aSumRow[1] = "$" + round2(nMaxEarned * nUSDperBTC);
+	aSumRow[2] = round2(nMaxEarned);
 	aSumRow[3] = round2(aSumRow[3]/nRows);
 	aSumRow[4] = round2(aSumRow[4]*100/nRows) + "%";
 	aSumRow[5] = round2(aSumRow[5]/nRows);
@@ -426,6 +428,12 @@ function getCurrentData()
 	this.difficultyIncrease = _difficultyIncrease;
 	this.resetBalance = _resetBalance;
 	this.operationalCost = _opCost;
+	this.maxBalance = _maxBalance;
+	
+	function _maxBalance()
+	{
+		return this.maxBal;
+	}
 	
 	function _opCost()
 	{
