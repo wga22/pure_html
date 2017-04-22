@@ -119,13 +119,14 @@ function loadAllTheData()
 				var nDifficulty = parseFloat(this[oFields.DIFFICULTY]); //difficulty - not in original dataset
 				var time = new Date(this["created_at"]);
 		
-				if(nBalance >=0 && nHashRate>=-100 )
+				if(nBalance >0 && nHashRate>=-100 )		//0 balance can be ignored, since this only happened in feb 2016
 				{
 					var sYM = getStringYYYYMM(time);
 					if(!oMonthlyBTCValues[sYM])
 					{
 						oMonthlyBTCValues[sYM] = new BTCResults();
-						oMonthlyBTCValues[sYM].MINMIN = .1 / NBTCFACTOR;		//TODO: actually fix the data. filter out any min balances values less than 100mBTC
+						//$('#debug').append("<li>month: "+sYM+"</li>");
+						//oMonthlyBTCValues[sYM].MINMIN = .1 / NBTCFACTOR;		//TODO: actually fix the data. filter out any min balances values less than 100mBTC
 					}
 					oMonthlyBTCValues[sYM].addVals(nBalance,nHashRate,nDifficulty);
 				}
