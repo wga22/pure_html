@@ -177,6 +177,18 @@ function loadAllTheData()
 	
 }
 
+function getStringPrev(sYYYYMM)
+{
+	var nMon = parseInt(sYYYYMM.substr(4,2))-1;
+	var nYear = parseInt(sYYYYMM.substr(0,4));
+	if(nMon < 1)
+	{
+		nYear--
+		nMon = 12;
+	}
+	return nYear + (nMon<10 ? '0': '') + nMon;
+}
+
 function getStringYYYYMM(oDate)
 {
 	var sRet = "0000-00";
@@ -207,7 +219,13 @@ function writeTheValues(oVals, sTable)
 		//$('#debug').append("<li>loading month: "+x+"</li>");
 		
 		var od = oVals[x];
-		var nEarned = (od.balanceGrowth()* NBTCFACTOR);
+		var oPrevMonth = oVals[getStringPrev(x)];
+		var nEarned = od.maxBal;
+		if(oPrevMonth)
+		{
+			nEarned = od.maxBal - oPrevMonth.maxBal
+		}
+		nEarned *=  NBTCFACTOR;
 		nMaxEarned = Math.max(od.maxBalance(), nMaxEarned);
 		//[1] and [2] are done all at once
 		aSumRow[3] += od.avgHourlyHashRate(true);
