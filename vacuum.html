@@ -52,6 +52,7 @@
 	var nUSDperBTC = 0;
 	var nBalanceCurr = 0;
 	var NMAXLOADWAITCYCLES = 30;
+	var extracts = {"201705": 0.23393094};
 
 	function getDateToTSStringFirstDay(a_oDate)
 	{
@@ -236,7 +237,7 @@ function writeTheValues(oVals, sTable)
 		diffRange.nMin = Math.min(diffRange.nMin, od.minDiff);
 		aSumRow[7] += od.nCount;
 		aSumRow[8] += od.operationalCost();
-		if(od.percentRunning() >0 )
+		if(od.percentRunning() > 0 ||  od.avgHourlyHashRate(true) > 0)
 		{
 			
 			aDeltasPerMonth.push([x, 
@@ -430,6 +431,7 @@ function getCurrentData()
 	var THSDIGITS = 1000000000000;
 	var NMINDIFF = 100013252236;
 	var KWHCost = 0.12;
+	
 	this.minDiff = 90071992547409;
 	this.maxDiff = 0;
 	this.maxBal = 0;
@@ -439,6 +441,7 @@ function getCurrentData()
 	this.nCount = 0;
 	this.nCountRunning = 0;
 	this.MINMIN = 0;
+	
 	
 	//functions
 	this.addVals = _addVals;
@@ -544,6 +547,7 @@ function getCurrentData()
 
   <body onload="main()">
   <p style="align: middle;width:100%">
+  <a href="https://etherchain.org/account/0x4eb9283A53B9A722E2fD94cB9E2A63ce7CD30De0">Ether bal</a>
 <table style="border-width:1; border-style:solid;align: middle;width:80%">
 <tr>
 	<th>run rate</th>
