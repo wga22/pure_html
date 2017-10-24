@@ -224,10 +224,12 @@ function writeTheValues(oVals, sTable)
 		var nEarned = od.maxBal;
 		if(oPrevMonth)
 		{
+			//od.setPrevMonth(oPrevMonth);
 			nEarned = od.maxBal - oPrevMonth.maxBal
+			od.minBal = oPrevMonth.maxBal;
 		}
+		nMaxEarned += nEarned;
 		nEarned *=  NBTCFACTOR;
-		nMaxEarned = Math.max(od.maxBalance(), nMaxEarned);
 		//[1] and [2] are done all at once
 		aSumRow[3] += od.avgHourlyHashRate(true);
 		aSumRow[4] += od.percentRunning();
@@ -252,9 +254,9 @@ function writeTheValues(oVals, sTable)
 		} //dont bother writing a row if not running that month
 	}
 	var nRows = aDeltasPerMonth.length;
-	nMaxEarned = NBTCFACTOR * nMaxEarned;
+	nMaxEarned *= NBTCFACTOR;
 	aSumRow[1] = "$" + round2(nMaxEarned * nUSDperBTC);
-	aSumRow[2] = round2(nMaxEarned);
+	aSumRow[2] = round2(nMaxEarned*1000);
 	aSumRow[3] = round2(aSumRow[3]/nRows);
 	aSumRow[4] = round2(aSumRow[4]*100/nRows) + "%";
 	aSumRow[5] = round2(aSumRow[5]/nRows);
@@ -523,7 +525,7 @@ function getCurrentData()
 		if(validnum(nDifficulty) && nDifficulty > NMINDIFF)
 		{
 			this.minDiff = Math.min(nDifficulty, this.minDiff);
-			this.maxDiff = Math.max(nDifficulty, this.maxDiff);			
+			this.maxDiff = Math.max(nDifficulty, this.maxDiff);
 		}
 		this.nCount++;
 	}
