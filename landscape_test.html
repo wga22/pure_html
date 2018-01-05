@@ -31,6 +31,8 @@
 	var oFields = {SIGNAL_LEVEL: "field1", STATUS_CHANGE:"field2"};
 	var aWifiStats = [];
 	var nLoadedMonths = 1;
+	const NMILISPERHOUR = 3600 * 1000;
+	const NMAXOUTAGEHOURS = 20 * NMILISPERHOUR;
 
  function main() 
  {
@@ -112,8 +114,6 @@ function writeTheLightStats(aVals, sTable)
 	$('#details_list').append("<li>Average Signal: " + round2(nAverageSignal)+ "</li>");
 	$('#details_list').append("<li>Latest Signal(" + (oLatestRecord.ts.toLocaleString()) + "): " + round2(oLatestRecord.signal)+ "</li>");
 	
-	const NMILISPERHOUR = 3600 * 1000;
-	const NMAXOUTAGEHOURS = 5 * NMILISPERHOUR;
 	var aOutages = [];
 	for (var x=1; x < aSortedData.length; x++)
 	{
