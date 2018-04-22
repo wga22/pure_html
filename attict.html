@@ -127,16 +127,17 @@ function writeTheValues(oVals, sTable)
 	drawTheChartOfDiffs(aDeltasPerMonth);
 	//write out the table
 	$(sTable).DataTable( {
-        data: aDeltasPerMonth,
+		data: aDeltasPerMonth,
+		order: [[ 0, "desc" ]],
 		iDisplayLength:24,
-        columns: [
-            { title: "Date" },
-            { title: "Avg. Outdoor" },
+		columns: [
+			{ title: "Date" },
+			{ title: "Avg. Outdoor" },
 			{ title: "Avg. Attic" },
 			{ title: "Average overheat" },
 			{ title: "Average humidity" },
-            { title: "data points" }
-        ]
+			{ title: "data points" }
+		]
     } );
 }
 
