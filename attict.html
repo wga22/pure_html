@@ -31,9 +31,9 @@
 	var api_key = 'WE0B76XWWVYWGVH7';
 	var NRESULTS = 3000;	//number of results to load per month
 	// global variables
-	var NMONTHSTOLOAD = 36;
-	var NMAXWINTERTEMP = 40;	//how hot it needs to be in winter to track
-	var NMAXSUMMERTEMP = 70; // how hot it needs to be in summer to track
+	var NMONTHSTOLOAD = 48;
+	var NMAXWINTERTEMP = 60;	//how hot it needs to be in winter to track
+	var NMAXSUMMERTEMP = 60; // how hot it needs to be in summer to track
 	var NTHRESHOLD = 10;	//some filter to keep low variances out
 	var MILLISPERMONTH = 31*24*60*60*1000; //days*hours*mins*secs*millis
 	var sTPURL = 'https://api.thingspeak.com/channels/'+channel_id+'/feeds.json?timezone=America%2FNew_York&api_key='+api_key;
@@ -315,7 +315,7 @@ function writeTheValues(oVals, sTable)
 	</ol>
 	<ol><b>Important Dates</b>
 	<li>Feb  15, 2018 - added reflection to attic (50% coverage)</li>
-	<li>Mar 1, 2018 - tree strikes house, and add</li>
+	<li>Mar 15, 2019 - double the insulation</li>
 	</ol>
 	More data details are available on <a href="https://thingspeak.com/channels/39741">ThingSpeak</a>.
   </p>
