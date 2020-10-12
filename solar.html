@@ -20,6 +20,14 @@
     <script src="http://cdn.jsdelivr.net/chartist.js/latest/chartist.min.js"></script>
 	
 	<script type='text/javascript'>
+function chargeState()
+{
+	
+}
+function maxVal()
+{
+	
+}
 
 	//<https://code.jquery.com/jquery-1.10.2.js
 	//#map { width: 360px; height:200px; margin: 0 auto; }
@@ -33,11 +41,19 @@
 	var NTHRESHOLD = 10;	//some filter to keep low variances out
 	var MILLISPERMONTH = 31*24*60*60*1000; //days*hours*mins*secs*millis
 	var sTPURL = 'https://api.thingspeak.com/channels/'+channel_id+'/feeds.json?timezone=America%2FNew_York&api_key='+api_key;
-	var oFields = {BATT_VOLT: "field1", BATT_CURR:"field2", PANEL_VOLT: "field3", PANEL_POW: "field4", 
-	CHARGE_STATE: "field5", CURRENT_LOAD: "field6", YIELD: "field7", MAX_POWER: "field8"};
-	var oDeltasPerMonth = {};
+	var oFields = {
+		BATT_VOLT: {tp: "field1", label:"Batt(mV)", func:maxVal},
+		BATT_CURR:{tp: "field2", label:"Batt(I)", func:maxVal},
+		PANEL_VOLT:{tp:  "field3",label:"Panel(mV)", func:maxVal},
+		PANEL_POW:{tp:  "field4", label:"Panel(W)", func:maxVal},
+		CHARGE_STATE:{tp:  "field5",label:"Charge State", func:chargeState},
+		CURRENT_LOAD: {tp: "field6",label:"Load(I)", func:maxVal},
+		YIELD: {tp: "field7", label:"Yield(kWh)", func:maxVal},
+		MAX_POWER: {tp: "field8", label:"Power(W)", func:maxVal}
+		};
+	var oDailyData = {};
 	var nLoadedMonths = 1;
-	
+
 function getDateToTSStringFirstDay(a_oDate)
 {
 	//YYYY-MM-DD%20HH:NN:SS
@@ -50,11 +66,20 @@ function getDateToTSStringFirstDay(a_oDate)
 	return (a_oDate.getFullYear()+0) + "-" + sMonth + "-01%2000:00:00"
 }
 
-function getShortDateString(a_oDate)
+function getMonthDateString(a_oDate)
 {
 	var sMonth = (a_oDate.getMonth() + 1);
 	sMonth = (sMonth < 10)? ("0"+sMonth) : (sMonth + "");
 	return a_oDate.getFullYear() + "-" + sMonth;
+}
+
+function getDateString(a_oDate)
+{
+	var sMonth = (a_oDate.getMonth() + 1);
+	sMonth = (sMonth < 10)? ("0"+sMonth) : (sMonth + "");
+	var sDate = (a_oDate.getDate() + 1);
+	sDate = (sDate < 10)? ("0"+sDate) : (sDate + "");
+	return a_oDate.getFullYear() + "-" + sMonth + "-" + sDate;
 }
 
 
@@ -74,29 +99,56 @@ function gatherData()
 		$.getJSON(sTPURLbyDate, function(data)
 		{
 			$.each(data.feeds, function() 
-			{			
+			{	
+				/*
 				//FIELDS:	BATT_VOLT, BATT_CURR, PANEL_VOLT, PANEL_POW, CHARGE_STATE, CURRENT_LOAD, YIELD, MAX_POWER			
-				var nBatteryVoltage = parseFloat(this[oFields.BATT_VOLT]);
-				var nBatteryCurrent = parseFloat(this[oFields.BATT_CURR]);
-				var nCurrentLoad = parseFloat(this[oFields.CURRENT_LOAD]);
-				var nChargeState = parseInt(this[oFields.CHARGE_STATE]);
+				var nBatteryVoltage = parseFloat(this[oFields.BATT_VOLT.tp]);
+				var nBatteryCurrent = parseFloat(this[oFields.BATT_CURR.tp]);
+				var nCurrentLoad = parseFloat(this[oFields.CURRENT_LOAD.tp]);
+				var nChargeState = parseInt(this[oFields.CHARGE_STATE.tp]);
 				
-				var nPanelVoltage = parseFloat(this[oFields.PANEL_VOLT]);
-				var nPanelPower = parseFloat(this[oFields.PANEL_POW]);
-				var nMaxPower = parseFloat(this[oFields.MAX_POWER]);
-				var nYield = parseFloat(this[oFields.YIELD]);
-				
+				var nPanelVoltage = parseFloat(this[oFields.PANEL_VOLT.tp]);
+				var nPanelPower = parseFloat(this[oFields.PANEL_POW.tp]);
+				var nMaxPower = parseFloat(this[oFields.MAX_POWER.tp]);
+				var nYield = parseFloat(this[oFields.YIELD.tp])/100;
+				*/
 				var time = new Date(this["created_at"]);
-				var sYM = getShortDateString(time);					
+				var sYMD = getDateString(time);				
+				if(!oDailyData[sYMD])
+				{
+					oDailyData[sYMD] = {};
+					for(var q in oFields)
+					{
+						oDailyData[sYMD][q] = 0;
+					}
+				}
+				for(var q in oFields)
+				{
+					if("CHARGE_STATE" == q )
+					{
+						if(3 == parseInt(this[oFields[q].tp]))	//count number of times there was charging going on
+						{
+							oDailyData[sYMD][q] = oDailyData[sYMD][q] + 1;
+						}
+						//$('#debug').append("<li>"+parseInt(this[oFields[q].tp]) + " </li>");
+					}
+					else
+					{
+						oDailyData[sYMD][q] = Math.max(oDailyData[sYMD][q], Math.abs(parseFloat(this[oFields[q].tp])));
+					}
+					
+					//$('#debug').append("<li>"+q + " = " + oDailyData[sYMD][q] +" - "+ Math.abs(parseFloat(this[oFields[q].tp])) +"</li>");
+				}
 
+				/*
 				//Off 0  / Low power 1 • (load search) / Fault 2 / Bulk 3  / Absorption 4  / Float 5
 				if(nChargeState>0)
 				{
 					$('#chargestate').append("<li>"+time.toLocaleString() + "   V:" +nBatteryVoltage + " I:" + nBatteryCurrent + " " + writeChargeState(nChargeState)
-					 + displayFieldAboveVal("Panel Voltage", nPanelVoltage, 2)
-					 + displayFieldAboveVal("Panel Power", nPanelPower, 2)
-					 + displayFieldAboveVal("max Pow:", nMaxPower, 10)
-					 + displayFieldAboveVal("Yield", nYield, 2)
+					 + displayFieldAboveVal("Panel Voltage(mV)", nPanelVoltage, 2)
+					 + displayFieldAboveVal("Panel Power(W)", nPanelPower, 2)
+					 + displayFieldAboveVal("Max Pow(W):", nMaxPower, 10)
+					 + displayFieldAboveVal("Yield(kWh)", nYield, 0.02)
 					+"</li>");
 				}
 				else	//nothing happening
@@ -105,6 +157,7 @@ function gatherData()
 					+ displayFieldAboveVal("max Pow:", nMaxPower, 10)
 					+ displayFieldAboveVal("Yield", nYield, 2)+"</li>");				
 				}
+				*/
 			})
 			//inside the call
 			nLoadedMonths++;
@@ -131,35 +184,42 @@ function displayFieldAboveVal(sLabel, nVal, nThres)
 	return sRes;
 }
 
+/*
+		BATT_VOLT: {tp: "field1", label:"Batt(mV)", func:maxVal},
+		BATT_CURR:{tp: "field2", label:"Batt(I)", func:maxVal},
+		PANEL_VOLT:{tp:  "field3",label:"Panel(mV)", func:maxVal},
+		PANEL_POW:{tp:  "field4", label:"Panel(W)", func:maxVal},
+		CHARGE_STATE:{tp:  "field5",label:"Charge State", func:chargeState},
+		CURRENT_LOAD: {tp: "field6",label:"Load(I)", func:maxVal},
+		YIELD: {tp: "field7", label:"Yield(kWh)", func:maxVal},
+		MAX_POWER: {tp: "field8", label:"Power(W)", func:maxVal}
+		};
+	*/
 
 function writeTheValues(oVals, sTable)
-	{
+{
 	//compute the averages for each month, and write it to a dataset for output to a table.
-	var aDeltasPerMonth = [];
+	var aDeltasPerDay = [];
 	for (var x in oVals)
 	{
 		//$('#debug').append("<li>loading month: "+x+"</li>");
 		
 		var od = oVals[x];
-		if(od.nCount>50)
-		{
-			aDeltasPerMonth.push([x, round2(od.avgOutdoorTemp()), round2(od.avgAtticTemp()), round2(od.avgTempDiff()),
-				round2(od.avgAtticHumidity()),od.nCount])
-		}
+		aDeltasPerDay.push([x, od["BATT_VOLT"], od["PANEL_VOLT"], od["BATT_CURR"], od["PANEL_POW"], od["CHARGE_STATE"]])
 	}
-	drawTheChartOfDiffs(aDeltasPerMonth);
+	//drawTheChartOfDiffs(aDeltasPerDay);
 	//write out the table
 	$(sTable).DataTable( {
-		data: aDeltasPerMonth,
+		data: aDeltasPerDay,
 		order: [[ 0, "desc" ]],
 		iDisplayLength:24,
 		columns: [
 			{ title: "Date" },
-			{ title: "Avg. Outdoor" },
-			{ title: "Avg. Attic" },
-			{ title: "Average overheat" },
-			{ title: "Average humidity" },
-			{ title: "data points" }
+			{ title: "Max Batt Volt" },
+			{ title: "Max Panel Volt" },
+			{ title: "Max Batt Current" },
+			{ title: "Max Panel Current" },
+			{ title: "Count of Charging" }
 		]
     } );
 }
@@ -175,13 +235,13 @@ function writeTheValues(oVals, sTable)
 	if(nLoadedMonths >= NMONTHSTOLOAD)
 	{
 		//writeTheValues();
-		writeTheValues(oDeltasPerMonth, "#summer_temp_table");
+		writeTheValues(oDailyData, "#solar_data_table");
 		
 	}
 	else
 	{
 		//$('#debug').append("<li>Finished loading: "+nLoadedMonths+" months of data.</li>")
-		setTimeout("waitAndWriteVals()", 2000);
+		setTimeout("waitAndWriteVals()", 1000);
 	}
  }
  
@@ -254,7 +314,7 @@ function writeTheValues(oVals, sTable)
 	//setTimeout("writeTheValues()", 20000);
  }
 
- function TemperatureResults()
+ function SolarDayResults()
  {
 	this.atTempTotals=0;
 	this.outdoorTempTotals=0;
@@ -263,7 +323,7 @@ function writeTheValues(oVals, sTable)
 	this.nCount = 0;
 	
 	//functions
-	this.addTemperatures = _addTemps;
+	this.addSolarResults = _addSolarRes;
 	this.avgOutdoorTemp = _avgOutdoorTemp;
 	this.avgAtticTemp = _avgAtticTemp;
 	this.avgAtticHumidity = _avgAtticHumidity;
@@ -293,7 +353,7 @@ function writeTheValues(oVals, sTable)
 		return _average(this.atTempTotals,this.nCount)
 	}
 	
-	function _addTemps(nOutdoorT, nAtticT, nAtticHumidity)
+	function _addSolarRes(nOutdoorT, nAtticT, nAtticHumidity)
 	{
 		if(validnum(nOutdoorT) && validnum(nAtticT))
 		{
@@ -343,11 +403,10 @@ function writeTheValues(oVals, sTable)
   <H3>Solar Data</H3>
 	<table id="solar_data_table" class="display" width="80%"></table>
 </div>
-	CHARGING:
+	Charge State:
 	<ol id="chargestate">
 	</ol>
-
-	Not Charging
+DEBUG
 	<ol id="debug">
 	</ol>
 
