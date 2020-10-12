@@ -205,20 +205,21 @@ function writeTheValues(oVals, sTable)
 		//$('#debug').append("<li>loading month: "+x+"</li>");
 		
 		var od = oVals[x];
-		aDeltasPerDay.push([x, od["BATT_VOLT"], od["PANEL_VOLT"], od["BATT_CURR"], od["PANEL_POW"], od["CHARGE_STATE"]])
+		aDeltasPerDay.push([x, od["BATT_VOLT"], od["PANEL_VOLT"], Math.max(od["BATT_CURR"],od["CURRENT_LOAD"]), (od["YIELD"]/100),od["MAX_POWER"], od["CHARGE_STATE"]])
 	}
 	//drawTheChartOfDiffs(aDeltasPerDay);
 	//write out the table
 	$(sTable).DataTable( {
 		data: aDeltasPerDay,
 		order: [[ 0, "desc" ]],
-		iDisplayLength:24,
+		iDisplayLength:100,
 		columns: [
 			{ title: "Date" },
-			{ title: "Max Batt Volt" },
-			{ title: "Max Panel Volt" },
-			{ title: "Max Batt Current" },
-			{ title: "Max Panel Current" },
+			{ title: oFields["BATT_VOLT"].label },
+			{ title: oFields["PANEL_VOLT"].label },
+			{ title: "Max Batt/Load Current (mA)" },
+			{ title: oFields["YIELD"].label },
+			{ title: oFields["MAX_POWER"].label },
 			{ title: "Count of Charging" }
 		]
     } );
