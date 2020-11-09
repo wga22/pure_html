@@ -139,10 +139,13 @@ function gatherData()
 						{
 							oDailyData[sYMD][q] = Math.max(oDailyData[sYMD][q], val);
 						}
+						//turn on debugging for 1 date
+						/* 
 						if(sYMD=='2020-11-10')
 						{
 							$('#debug').append("<li>"+q + " = " + oDailyData[sYMD][q] +" - "+ val +"</li>");
 						}
+						*/
 					}
 				}
 
