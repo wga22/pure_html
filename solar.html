@@ -124,20 +124,26 @@ function gatherData()
 				}
 				for(var q in oFields)
 				{
-					if("CHARGE_STATE" == q )
+					var val = Math.abs(parseFloat(this[oFields[q].tp]));
+					if(val > 0)
 					{
-						if(3 == parseInt(this[oFields[q].tp]))	//count number of times there was charging going on
+						if("CHARGE_STATE" == q )
 						{
-							oDailyData[sYMD][q] = oDailyData[sYMD][q] + 1;
+							if(0 <  parseInt(this[oFields[q].tp]))	//count number of times there was charging going on
+							{
+								oDailyData[sYMD][q] = oDailyData[sYMD][q] + 1;
+							}
+							//$('#debug').append("<li>"+parseInt(this[oFields[q].tp]) + " </li>");
 						}
-						//$('#debug').append("<li>"+parseInt(this[oFields[q].tp]) + " </li>");
+						else
+						{
+							oDailyData[sYMD][q] = Math.max(oDailyData[sYMD][q], val);
+						}
+						if(sYMD=='2020-11-10')
+						{
+							$('#debug').append("<li>"+q + " = " + oDailyData[sYMD][q] +" - "+ val +"</li>");
+						}
 					}
-					else
-					{
-						oDailyData[sYMD][q] = Math.max(oDailyData[sYMD][q], Math.abs(parseFloat(this[oFields[q].tp])));
-					}
-					
-					//$('#debug').append("<li>"+q + " = " + oDailyData[sYMD][q] +" - "+ Math.abs(parseFloat(this[oFields[q].tp])) +"</li>");
 				}
 
 				/*
