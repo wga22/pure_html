@@ -1,0 +1,425 @@
+<html>
+  <head>
+  <title>Solar Panel</title>
+<style type="text/css">
+  body { background-color: #ddd; }
+  #container { height: 95%; width: 100%; display: table; }
+  #inner { vertical-align: middle; display: table-cell; }
+  .winter { background-color:lightblue;}
+  .solar_chart_style{ background-color:bisque;}
+  .ct-series-b .ct-line {  stroke: blue;  stroke-width: 5px; stroke-dasharray: 10px 20px;}
+  
+</style>
+	<link href="https://cdn.datatables.net/1.10.9/css/jquery.dataTables.min.css" rel="stylesheet" title="data tables"/>
+
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+	<script type="text/javascript" src="https://cdn.datatables.net/1.10.9/js/jquery.dataTables.min.js"></script>
+
+	<!-- css and js for chartist: http://gionkunz.github.io/chartist-js/getting-started.html -->
+    <link rel="stylesheet" href="http://cdn.jsdelivr.net/chartist.js/latest/chartist.min.css">
+    <script src="http://cdn.jsdelivr.net/chartist.js/latest/chartist.min.js"></script>
+	
+	<script type='text/javascript'>
+function chargeState()
+{
+	
+}
+function maxVal()
+{
+	
+}
+
+	//<https://code.jquery.com/jquery-1.10.2.js
+	//#map { width: 360px; height:200px; margin: 0 auto; }
+	// set your channel id here
+	var channel_id = 140150;
+	// set your channel's read api key here if necessary
+	var api_key = 'WCPXWMIWKNF8A4EI';
+	var NRESULTS = 3000;	//number of results to load per month
+	// global variables
+	var NMONTHSTOLOAD = 2;
+	var NTHRESHOLD = 10;	//some filter to keep low variances out
+	var MILLISPERMONTH = 31*24*60*60*1000; //days*hours*mins*secs*millis
+	var sTPURL = 'https://api.thingspeak.com/channels/'+channel_id+'/feeds.json?timezone=America%2FNew_York&api_key='+api_key;
+	var oFields = {
+		BATT_VOLT: {tp: "field1", label:"Batt(mV)", func:maxVal},
+		BATT_CURR:{tp: "field2", label:"Batt(I)", func:maxVal},
+		PANEL_VOLT:{tp:  "field3",label:"Panel(mV)", func:maxVal},
+		PANEL_POW:{tp:  "field4", label:"Panel(W)", func:maxVal},
+		CHARGE_STATE:{tp:  "field5",label:"Charge State", func:chargeState},
+		CURRENT_LOAD: {tp: "field6",label:"Load(I)", func:maxVal},
+		YIELD: {tp: "field7", label:"Yield(kWh)", func:maxVal},
+		MAX_POWER: {tp: "field8", label:"Power(W)", func:maxVal}
+		};
+	var oDailyData = {};
+	var nLoadedMonths = 1;
+
+function getDateToTSStringFirstDay(a_oDate)
+{
+	//YYYY-MM-DD%20HH:NN:SS
+	if(!a_oDate)
+	{
+		a_oDate = new Date();
+	}
+	var sMonth = (a_oDate.getMonth() + 1);
+	sMonth = (sMonth < 10)? ("0"+sMonth) : (sMonth + "");
+	return (a_oDate.getFullYear()+0) + "-" + sMonth + "-01%2000:00:00"
+}
+
+function getMonthDateString(a_oDate)
+{
+	var sMonth = (a_oDate.getMonth() + 1);
+	sMonth = (sMonth < 10)? ("0"+sMonth) : (sMonth + "");
+	return a_oDate.getFullYear() + "-" + sMonth;
+}
+
+function getDateString(a_oDate)
+{
+	var sMonth = (a_oDate.getMonth() + 1);
+	sMonth = (sMonth < 10)? ("0"+sMonth) : (sMonth + "");
+	var sDate = (a_oDate.getDate() + 1);
+	sDate = (sDate < 10)? ("0"+sDate) : (sDate + "");
+	return a_oDate.getFullYear() + "-" + sMonth + "-" + sDate;
+}
+
+
+function gatherData()
+{
+	//determine the monthly average daily temperature difference when attic is hotter than outside
+	var oMonthToLoad = new Date();
+	oMonthToLoad.setMonth(oMonthToLoad.getMonth()+1);	//increment the date one month forward
+	for(var x=0; x < NMONTHSTOLOAD; x++)
+	{
+		//  start (datetime) Start date in format YYYY-MM-DD%20HH:NN:SS (optional) (stop is the same)
+		var sStopDate = getDateToTSStringFirstDay(oMonthToLoad);
+		oMonthToLoad.setMonth(oMonthToLoad.getMonth()-1)
+		var sTPURLbyDate =  sTPURL+ "&start=" + getDateToTSStringFirstDay(oMonthToLoad) + "&end=" + sStopDate;
+		//$('#debug').append("<li>"+sTPURLbyDate+"</li>");
+		
+		$.getJSON(sTPURLbyDate, function(data)
+		{
+			$.each(data.feeds, function() 
+			{	
+				/*
+				//FIELDS:	BATT_VOLT, BATT_CURR, PANEL_VOLT, PANEL_POW, CHARGE_STATE, CURRENT_LOAD, YIELD, MAX_POWER			
+				var nBatteryVoltage = parseFloat(this[oFields.BATT_VOLT.tp]);
+				var nBatteryCurrent = parseFloat(this[oFields.BATT_CURR.tp]);
+				var nCurrentLoad = parseFloat(this[oFields.CURRENT_LOAD.tp]);
+				var nChargeState = parseInt(this[oFields.CHARGE_STATE.tp]);
+				
+				var nPanelVoltage = parseFloat(this[oFields.PANEL_VOLT.tp]);
+				var nPanelPower = parseFloat(this[oFields.PANEL_POW.tp]);
+				var nMaxPower = parseFloat(this[oFields.MAX_POWER.tp]);
+				var nYield = parseFloat(this[oFields.YIELD.tp])/100;
+				*/
+				var time = new Date(this["created_at"]);
+				var sYMD = getDateString(time);				
+				if(!oDailyData[sYMD])
+				{
+					oDailyData[sYMD] = {};
+					for(var q in oFields)
+					{
+						oDailyData[sYMD][q] = 0;
+					}
+				}
+				for(var q in oFields)
+				{
+					var val = Math.abs(parseFloat(this[oFields[q].tp]));
+					if(val > 0)
+					{
+						if("CHARGE_STATE" == q )
+						{
+							if(0 <  parseInt(this[oFields[q].tp]))	//count number of times there was charging going on
+							{
+								oDailyData[sYMD][q] = oDailyData[sYMD][q] + 1;
+							}
+							//$('#debug').append("<li>"+parseInt(this[oFields[q].tp]) + " </li>");
+						}
+						else
+						{
+							oDailyData[sYMD][q] = Math.max(oDailyData[sYMD][q], val);
+						}
+						//turn on debugging for 1 date
+						/* 
+						if(sYMD=='2020-11-10')
+						{
+							$('#debug').append("<li>"+q + " = " + oDailyData[sYMD][q] +" - "+ val +"</li>");
+						}
+						*/
+					}
+				}
+
+				/*
+				//Off 0  / Low power 1 • (load search) / Fault 2 / Bulk 3  / Absorption 4  / Float 5
+				if(nChargeState>0)
+				{
+					$('#chargestate').append("<li>"+time.toLocaleString() + "   V:" +nBatteryVoltage + " I:" + nBatteryCurrent + " " + writeChargeState(nChargeState)
+					 + displayFieldAboveVal("Panel Voltage(mV)", nPanelVoltage, 2)
+					 + displayFieldAboveVal("Panel Power(W)", nPanelPower, 2)
+					 + displayFieldAboveVal("Max Pow(W):", nMaxPower, 10)
+					 + displayFieldAboveVal("Yield(kWh)", nYield, 0.02)
+					+"</li>");
+				}
+				else	//nothing happening
+				{
+					$('#debug').append("<li>"+time.toLocaleString() + "   V:" +nBatteryVoltage + " I:" + nBatteryCurrent
+					+ displayFieldAboveVal("max Pow:", nMaxPower, 10)
+					+ displayFieldAboveVal("Yield", nYield, 2)+"</li>");				
+				}
+				*/
+			})
+			//inside the call
+			nLoadedMonths++;
+		}	
+		) //getJSON
+	}	// for loop
+}
+
+function writeChargeState(nChargeState)
+{
+//Off 0  / Low power 1 • (load search) / Fault 2 / Bulk 3  / Absorption 4  / Float 5
+	var aVals = ["Off", "low", "fault", "bulk", "absorption", "float"];
+	return ((nChargeState>-1 && nChargeState<aVals.length)? aVals[nChargeState] : "UNK")
+
+}
+
+function displayFieldAboveVal(sLabel, nVal, nThres)
+{
+	var sRes = ""
+	if(nVal>=nThres)
+	{
+		sRes = "<b> "+sLabel+ ":" + nVal + "</b>"
+	}
+	return sRes;
+}
+
+/*
+		BATT_VOLT: {tp: "field1", label:"Batt(mV)", func:maxVal},
+		BATT_CURR:{tp: "field2", label:"Batt(I)", func:maxVal},
+		PANEL_VOLT:{tp:  "field3",label:"Panel(mV)", func:maxVal},
+		PANEL_POW:{tp:  "field4", label:"Panel(W)", func:maxVal},
+		CHARGE_STATE:{tp:  "field5",label:"Charge State", func:chargeState},
+		CURRENT_LOAD: {tp: "field6",label:"Load(I)", func:maxVal},
+		YIELD: {tp: "field7", label:"Yield(kWh)", func:maxVal},
+		MAX_POWER: {tp: "field8", label:"Power(W)", func:maxVal}
+		};
+	*/
+
+function writeTheValues(oVals, sTable)
+{
+	//compute the averages for each month, and write it to a dataset for output to a table.
+	var aDeltasPerDay = [];
+	for (var x in oVals)
+	{
+		//$('#debug').append("<li>loading month: "+x+"</li>");
+		
+		var od = oVals[x];
+		aDeltasPerDay.push([x, od["BATT_VOLT"], od["PANEL_VOLT"], Math.max(od["BATT_CURR"],od["CURRENT_LOAD"]), (od["YIELD"]/100),od["MAX_POWER"], od["CHARGE_STATE"]])
+	}
+	//drawTheChartOfDiffs(aDeltasPerDay);
+	//write out the table
+	$(sTable).DataTable( {
+		data: aDeltasPerDay,
+		order: [[ 0, "desc" ]],
+		iDisplayLength:100,
+		columns: [
+			{ title: "Date" },
+			{ title: oFields["BATT_VOLT"].label },
+			{ title: oFields["PANEL_VOLT"].label },
+			{ title: "Max Batt/Load Current (mA)" },
+			{ title: oFields["YIELD"].label },
+			{ title: oFields["MAX_POWER"].label },
+			{ title: "Count of Charging" }
+		]
+    } );
+}
+
+ function round2(nNum)
+ {
+	return Math.round(nNum * 100)/100;
+ }
+ 
+ function waitAndWriteVals()
+ {
+	
+	if(nLoadedMonths >= NMONTHSTOLOAD)
+	{
+		//writeTheValues();
+		writeTheValues(oDailyData, "#solar_data_table");
+		
+	}
+	else
+	{
+		//$('#debug').append("<li>Finished loading: "+nLoadedMonths+" months of data.</li>")
+		setTimeout("waitAndWriteVals()", 1000);
+	}
+ }
+ 
+ function drawTheChartOfDiffs(a_aDiffData)
+ {
+	function compareRows(a,b)
+	{
+		var nA = parseInt(a[0].replace('-', ''));
+		var nB = parseInt(b[0].replace('-', ''));
+		return nA < nB ? -1 : 1;
+	}
+	// {labels: [x,z,y], series [[1,2,3],[4,5,6]]}
+	//var oChartData = {};
+	var aLabels = [];
+	var aResults = [];
+	var aTemps = [];
+	var aVals = a_aDiffData.sort(compareRows)
+	//aDeltasPerMonth.push([x, round2(od.avgOutdoorTemp()), round2(od.avgAtticTemp()), round2(od.avgTempDiff()), round2(od.avgAtticHumidity()),od.nCount])
+	for(var x = 12; x <a_aDiffData.length; x++ )
+	{
+		aLabels.push(a_aDiffData[x][0]);//first field is the label
+		var nDiff = a_aDiffData[x][3] - a_aDiffData[x-12][3];
+		aResults.push(nDiff)
+		aTemps.push(a_aDiffData[x][1] - a_aDiffData[x-12][1])
+		//aResults.push(a_aDiffData[x][3])
+	}
+	
+	
+	var options = 
+	{
+		// Don't draw the line chart points
+		showPoint: true,
+		// Disable line smoothing
+		lineSmooth: false,
+		width: 1000,
+		height: 400,
+		// X-Axis specific configuration
+		axisX: 
+		{
+			// We can disable the grid for this axis
+			showGrid: true,
+			// and also don't show the label
+			showLabel: true
+		},
+		// Y-Axis specific configuration
+		axisY: 
+		{
+			// Lets offset the chart a bit from the labels
+			offset: 60
+			// The label interpolation function enables you to modify the values
+			// used for the labels on each axis. Here we are converting the
+			// values into million pound.
+			//,labelInterpolationFnc: function(value) {return value }
+		}
+	};
+	
+	var oChart = new Chartist.Line('#tempDiffChart', {labels: aLabels, series: [aResults, aTemps]}, options);
+	//var oChart = new Chartist.Line('#tempDiffChart', {labels: ['asdf', 'werww'], series: [[1,2]]}, {});
+ }
+ 
+ 
+ 
+ function main() 
+ {
+	//$("#winterMax").html(NMAXWINTERTEMP);
+	//$("#summerMax").html(NMAXSUMMERTEMP);
+	gatherData();
+	waitAndWriteVals();
+	//setTimeout("waitAndWriteVals()", 20000);
+	//setTimeout("writeTheValues()", 20000);
+ }
+
+ function SolarDayResults()
+ {
+	this.atTempTotals=0;
+	this.outdoorTempTotals=0;
+	this.humidityTotals = 0;
+	this.diffTotals = 0;
+	this.nCount = 0;
+	
+	//functions
+	this.addSolarResults = _addSolarRes;
+	this.avgOutdoorTemp = _avgOutdoorTemp;
+	this.avgAtticTemp = _avgAtticTemp;
+	this.avgAtticHumidity = _avgAtticHumidity;
+	this.avgTempDiff = _avgTempDiff;
+	
+	function _average(nSum, nCnt)
+	{
+		return nSum / nCnt;
+	}
+	
+	function _avgTempDiff()
+	{
+		return _average(this.diffTotals, this.nCount)
+	}
+	function _avgAtticHumidity()
+	{
+		return _average(this.humidityTotals,this.nCount)
+	}
+
+	function _avgOutdoorTemp()
+	{
+		return _average(this.outdoorTempTotals,this.nCount)
+	}
+	
+	function _avgAtticTemp()
+	{
+		return _average(this.atTempTotals,this.nCount)
+	}
+	
+	function _addSolarRes(nOutdoorT, nAtticT, nAtticHumidity)
+	{
+		if(validnum(nOutdoorT) && validnum(nAtticT))
+		{
+			this.outdoorTempTotals += nOutdoorT;
+			this.atTempTotals += nAtticT;
+			this.diffTotals += Math.abs(nOutdoorT - nAtticT);
+			this.nCount++;
+		
+		}
+		if(validnum(nAtticHumidity))
+		{
+			this.humidityTotals += nAtticHumidity;
+		}
+	}
+	function validnum(nVal)
+	{
+		return !isNaN(nVal) && (null != nVal)
+	}
+ }
+ 
+ /*
+   (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-550134-9', 'scienceontheweb.net');
+  ga('send', 'pageview');
+*/
+</script>
+</head>
+
+  <body onload="main()">
+  <p>
+	More data details are available on <a href="https://thingspeak.com/channels/140150">ThingSpeak</a>.
+  </p>
+  
+<H3>Daily Yield</H3>
+<!--
+ <div id="tempDiffChart" class="ct-series-a ct-line"></div>
+ <ul>
+ <li>Red - change in indoor/outdoor temp - Negative good</li>
+ <li>Dotted Orange - change in outdoor temp - negative shows lower value from 12 months prior</li>
+ </ul>
+ -->
+<div class="solar_chart_style">
+  <H3>Solar Data</H3>
+	<table id="solar_data_table" class="display" width="80%"></table>
+</div>
+	Charge State:
+	<ol id="chargestate">
+	</ol>
+DEBUG
+	<ol id="debug">
+	</ol>
+
+
+</body>
+</html>
