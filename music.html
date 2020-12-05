@@ -2,10 +2,17 @@
 <html>
 <head>
 	<title>will music</title>
+	<script>
+		function main()
+		{
+			document.all.bam.src = document.all.first.href;			
+		}
+	</script>
 </head>
-<body style="background-color:lightblue">
+<body style="background-color:lightblue" onload="main()">
+<iframe height="122" width="322" name="bam"></iframe>
 <ul>
-	<li><a href="https://stream.revma.ihrhls.com/zc8143" target="bam">Breeze</a></li>
+	<li><a href="https://stream.revma.ihrhls.com/zc8143" target="bam" id="first">Breeze</a></li>
 	<li><a href="https://stream.revma.ihrhls.com/zc3949" target="bam">Pride</a></li>
 	<li><a href="https://stream.revma.ihrhls.com/zc4422" target="bam">Hits</a></li>
 	<li><a href="https://stream.revma.ihrhls.com/zc4409" target="bam">80s to Today</a></li>
@@ -27,8 +34,6 @@
 	<li><a href="https://stream.revma.ihrhls.com/zc6137" target="bam">Christmas Classics</a></li>
 	<li><a href="https://stream.revma.ihrhls.com/zc4596" target="bam">Christmas Favs</a></li>
 </ul>
-
-<iframe height="122" width="622" name="bam"></iframe>
 
 </body>
 <!--
