@@ -2,10 +2,10 @@
 <head>
 <style type="text/css">
   body { background-color: #ecceee; }
-	#dogAgeTable{ background-color:lightblue}
+	#dogAgeTable2{ background-color:lightblue}
 
   </style>
-
+<link href="https://cdn.datatables.net/1.10.9/css/jquery.dataTables.min.css" rel="stylesheet" title="data tables"/>
 <script src="https://code.jquery.com/jquery-3.5.1.js"></script>
 <script src="https://cdn.datatables.net/1.10.22/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.10.22/js/dataTables.bootstrap4.min.js"></script>
@@ -53,11 +53,12 @@ function getAgeDiff(birthDate)
 function getDogList()
 {
 	//var theBigDay = new Date(1962, 6, 7); // 1962-07-07 (7th of July 1962)
+	//subtract one for month
 	var dList = [
 		{"name": "Gretel", birthdate: (new Date(2017,2,2)) },
-		{"name": "Buxley", birthdate: (new Date(2011,2,2)) },
+		{"name": "Buxley", birthdate: (new Date(2011,7,9)) },	//August 9.2011
 		{"name": "Luke", birthdate: (new Date(2014,2,2)) },
-		{"name": "Kevin", birthdate: (new Date(2015,2,2)) },
+		{"name": "Kevin", birthdate: (new Date(2015,9,31)) },	//
 		{"name": "Tucker", birthdate: (new Date(2017,2,2)) }
 	];	
 	return dList;
@@ -177,40 +178,28 @@ function writeTheValues(oVals, sTable)
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 </script>
 </head>
 <body onload="calculate()">
+<h2>Actual Dog Age - Allen Dogs</h2>
+<p>
+Per <a href="https://www.sciencemag.org/news/2019/11/here-s-better-way-convert-dog-years-human-years-scientists-say?">research in 2020</a> , the "7 year" factor for dog age is now deemed outdated.
+<br/>
+<i>
+The research team also used the rate of the methylation changes in dogs to match it to the human epigenetic clock,<br/>
+ although the resulting dog age conversion is a bit more complex than "multiply by seven." <br/>
+ The new formula, which applies to dogs older than one, says that a canine’s human age roughly equals <b>16 ln(dog age) + 31</b>. <br/>
+ (That’s the natural logarithm of the dog’s real age, multiplied by 16, with 31 added to the total.)<br/>
+</i>
+</p>
+
 
 <table id="dogAgeTable" class="display" width="80%"></table>
 
 <ul id="dogs">
 </ul>
 
-<p>
-<a href="https://www.sciencemag.org/news/2019/11/here-s-better-way-convert-dog-years-human-years-scientists-say?">article</a> 
 
-The research team also used the rate of the methylation changes in dogs to match it to the human epigenetic clock, although the resulting dog age conversion is a bit more complex than “multiply by seven.” The new formula, which applies to dogs older than one, says that a canine’s human age roughly equals 16 ln(dog age) + 31. (That’s the natural logarithm of the dog’s real age, multiplied by 16, with 31 added to the total.)
-</p>
 
 </body>
 </html>
