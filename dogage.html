@@ -1,0 +1,216 @@
+<html>
+<head>
+<style type="text/css">
+  body { background-color: #ecceee; }
+	#dogAgeTable{ background-color:lightblue}
+
+  </style>
+
+<script src="https://code.jquery.com/jquery-3.5.1.js"></script>
+<script src="https://cdn.datatables.net/1.10.22/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.10.22/js/dataTables.bootstrap4.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+<script src="https://cdn.datatables.net/plug-ins/1.10.21/dataRender/datetime.js"></script>
+
+
+<!-- 
+  #container { height: 95%; width: 100%; display: table; }
+  #inner { vertical-align: middle; display: table-cell; }
+  #dogAgeTable{ background-color:lightblue}
+
+  .ct-series-a .ct-slice-pie {
+  stroke: blue;
+  /* outline width */
+  stroke-width: 4px;
+https://code.jquery.com/jquery-3.5.1.js
+https://cdn.datatables.net/1.10.22/js/jquery.dataTables.min.js
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.26.0/moment.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.26.0/moment.min.js"></script>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/1.10.9/js/jquery.dataTables.min.js"></script>
+-->
+
+<script>
+
+const today = new Date();
+const FROM_PATTERN = 'YYYY-MM-DD HH:mm:ss.SSS';
+const TO_PATTERN   = 'MM/DD/YYYY';
+
+function getDogAge(ageDiffYears)
+{
+	//alert(ageDiffYears);
+	return Math.round(((Math.log(ageDiffYears) * 16)+31)*10)/10;
+}
+
+function getAgeDiff(birthDate)
+{
+	var t2 = today.getTime();
+	var t1 = birthDate.getTime();
+	return ((t2-t1)/(24*3600*1000*365));
+}
+
+function getDogList()
+{
+	//var theBigDay = new Date(1962, 6, 7); // 1962-07-07 (7th of July 1962)
+	var dList = [
+		{"name": "Gretel", birthdate: (new Date(2017,2,2)) },
+		{"name": "Buxley", birthdate: (new Date(2011,2,2)) },
+		{"name": "Luke", birthdate: (new Date(2014,2,2)) },
+		{"name": "Kevin", birthdate: (new Date(2015,2,2)) },
+		{"name": "Tucker", birthdate: (new Date(2017,2,2)) }
+	];	
+	return dList;
+}
+
+function calculate()
+{
+	//var theBigDay = new Date(1962, 6, 7); // 1962-07-07 (7th of July 1962)
+	var dogList = getDogList();
+	//dogAgeTable
+	var dogData = [];
+	for (var x=0; x < dogList.length; x++)
+	{
+		var aRow = [];
+		var ageDiff = getAgeDiff(dogList[x].birthdate);
+		var dAge = getDogAge(ageDiff)
+		aRow[0] = dogList[x].name;
+		aRow[1] = dogList[x].birthdate;
+		aRow[2] = Math.round(ageDiff);
+		aRow[3] = dAge;
+		//$('#dogs').append("<li>"+dogList[x].name +"  born: " + dogList[x].birthdate +" actual years: " + Math.round(ageDiff) + " human years:"+dAge+"</li>");
+		dogData[x] = aRow;
+	}
+
+	var aCols = [
+            { title: "Dog" , "type": "string" },
+			{ title: "Birthday" , "type": "date" },
+			{ title: "Actual Age" , "type": "num" },
+			{ title: "Dog Age" , "type": "num" }
+        ];
+
+
+	$('#dogAgeTable').DataTable( {
+		columnDefs: [{
+		  render: $.fn.dataTable.render.moment(FROM_PATTERN, TO_PATTERN),
+		  targets: 1
+		}],
+        data: dogData,
+		iDisplayLength:24,
+		columns: aCols
+    } );
+
+}
+
+
+
+
+function writeTheValues(oVals, sTable)
+	{
+	//compute the averages for each month, and write it to a dataset for output to a table.
+	var aDeltasPerMonth = [];
+	var aSumRow = ["Total", 0,0,0,0,0,0,0,0];
+	var nMaxEarned = 0;
+	var diffRange = {nMax:0, nMin:90071992547409}
+	for (var x in oVals)
+	{
+		//$('#debug').append("<li>loading month: "+x+"</li>");
+		
+		var od = oVals[x];
+		var oPrevMonth = oVals[getStringPrev(x)];
+		var nEarned = od.maxBal;
+		if(oPrevMonth)
+		{
+			//od.setPrevMonth(oPrevMonth);
+			nEarned = od.maxBal - oPrevMonth.maxBal
+			od.minBal = oPrevMonth.maxBal;
+		}
+		nMaxEarned += nEarned;
+		nEarned *=  NBTCFACTOR;
+		//[1] and [2] are done all at once
+		aSumRow[3] += od.avgHourlyHashRate(true);
+		aSumRow[4] += od.percentRunning();
+		aSumRow[5] += od.revPerHour()*nUSDperBTC*NBTCFACTOR;
+		//aSumRow[6] += od.difficultyIncrease();
+		diffRange.nMax = Math.max(diffRange.nMax, od.maxDiff);
+		diffRange.nMin = Math.min(diffRange.nMin, od.minDiff);
+		aSumRow[7] += od.nCount;
+		aSumRow[8] += od.operationalCost();
+		if(od.percentRunning() > 0 ||  od.avgHourlyHashRate(true) > 0)
+		{
+			
+			aDeltasPerMonth.push([x, 
+				("$" + (round2(nEarned * nUSDperBTC))),
+				round2(nEarned*1000),
+				(round2(od.avgHourlyHashRate(true))),
+				(round2(od.percentRunning() * 100) + "%"),
+				("$" + round2(od.revPerHour()*nUSDperBTC*NBTCFACTOR)),
+				(round2(od.difficultyIncrease()*100) + "%"),
+				od.nCount,
+				("$" + round2(od.operationalCost()))]);
+		} //dont bother writing a row if not running that month
+	}
+	var nRows = aDeltasPerMonth.length;
+	nMaxEarned *= NBTCFACTOR;
+	aSumRow[1] = "$" + round2(nMaxEarned * nUSDperBTC);
+	aSumRow[2] = round2(nMaxEarned*1000);
+	aSumRow[3] = round2(aSumRow[3]/nRows);
+	aSumRow[4] = round2(aSumRow[4]*100/nRows) + "%";
+	aSumRow[5] = round2(aSumRow[5]/nRows);
+	aSumRow[6] = round2((new BTCResults()).difficultyIncrease(diffRange.nMin,diffRange.nMax)*100) + "%";
+	aSumRow[8] = "$" + round2(aSumRow[8]);
+
+	var aCols = [
+            { title: "Date" , "type": "string" },
+			{ title: "Earned USD" , "type": "num" },
+			{ title: "Earned mBTC" , "type": "num" },
+			{ title: "Average Hashrate (THs)" , "type": "num" },
+			{ title: "Time Running" , "type": "num-fmt" },
+			{ title: "Rev per hour running", "type": "num-fmt"  },
+			{ title: "Diff Increase", "type": "num-fmt" },
+            { title: "# Collected" , "type": "num" },
+			{title: "Op Cost", "type": "num" }
+        ];
+	//write out the summary table
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</script>
+</head>
+<body onload="calculate()">
+
+<table id="dogAgeTable" class="display" width="80%"></table>
+
+<ul id="dogs">
+</ul>
+
+<p>
+<a href="https://www.sciencemag.org/news/2019/11/here-s-better-way-convert-dog-years-human-years-scientists-say?">article</a> 
+
+The research team also used the rate of the methylation changes in dogs to match it to the human epigenetic clock, although the resulting dog age conversion is a bit more complex than “multiply by seven.” The new formula, which applies to dogs older than one, says that a canine’s human age roughly equals 16 ln(dog age) + 31. (That’s the natural logarithm of the dog’s real age, multiplied by 16, with 31 added to the total.)
+</p>
+
+</body>
+</html>
