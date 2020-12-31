@@ -205,6 +205,18 @@ function displayFieldAboveVal(sLabel, nVal, nThres)
 		};
 	*/
 
+
+function panelVoltClean(nVolts)
+{
+	//anything higher than 22490 is off
+	const NMAXPANEL = 30000;
+	for(var x = 4; ((nVolts>NMAXPANEL)&& x > 0); x--)
+	{
+		nVolts = Math.round(nVolts/10);
+	}
+	return nVolts;
+}
+
 function writeTheValues(oVals, sTable)
 {
 	//compute the averages for each month, and write it to a dataset for output to a table.
@@ -214,7 +226,7 @@ function writeTheValues(oVals, sTable)
 		//$('#debug').append("<li>loading month: "+x+"</li>");
 		
 		var od = oVals[x];
-		aDeltasPerDay.push([x, od["BATT_VOLT"], od["PANEL_VOLT"], Math.max(od["BATT_CURR"],od["CURRENT_LOAD"]), (od["YIELD"]/100),od["MAX_POWER"], od["CHARGE_STATE"]])
+		aDeltasPerDay.push([x, od["BATT_VOLT"], panelVoltClean(od["PANEL_VOLT"]), Math.max(od["BATT_CURR"],od["CURRENT_LOAD"]), (od["YIELD"]/100),od["MAX_POWER"], od["CHARGE_STATE"]])
 	}
 	//drawTheChartOfDiffs(aDeltasPerDay);
 	//write out the table
