@@ -2,15 +2,67 @@
 <html>
 <head>
 	<title>will music</title>
+	<link rel="icon" href="images/iheart.png">
+	<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
 	<script>
-		function main()
+
+const IHEART = "https://stream.revma.ihrhls.com/"
+
+var stations = 
+[
+{code:"zc8143", title:"Breeze", color:"DeepSkyBlue" },
+{code:"zc3949", title:"Pride", color:"DarkOrchid" },
+{code:"zc4422", title:"Hits", color:"yellow" },
+{code:"zc4409", title:"80s to Today", color:"LawnGreen" },
+{code:"zc8478", title:"2010's", color:"#698B69" },
+{code:"zc6850", title:"2000's", color:"#8B5A00" },
+{code:"zc6834", title:"90's", color:"Gainsboro" },
+{code:"zc5060", title:"80's", color:"#FFC125" },
+{code:"zc6437", title:"90's Alternative", color:"#D1EEEE" },
+{code:"zc6788", title:"Reggae", color:"#1E90FF" },
+{code:"zc7078", title:"Classic Rock", color:"#97FFFF" },
+{code:"zc6878", title:"Vinyl Classic Rock", color:"#191970" },
+{code:"zc6377", title:"Classical", color:"MidnightBlue" },
+{code:"zc4717", title:"Real Oldies", color:"#8B795E" },
+{code:"zc4439", title:"Cool Oldies", color:"#FF1493" },
+{code:"zc4242", title:"Jazz", color:"#EED5D2" },
+{code:"zc6221", title:"Beach", color:"Maroon" },
+{code:"zc6148", title:"Hawaii", color:"OliveDrab" },
+{code:"zc4719", title:"R&amp;B", color:"lavender" },
+{code:"zc6137", title:"Christmas Classics", color:"MedSpringGreen" },
+{code:"zc4596", title:"Christmas Favs", color:"#00FA9A" }
+];		
+	
+	function main()
+	{
+		for(var x=0; x < stations.length; x++)
 		{
-			document.all.bam.src = document.all.first.href;			
+			var sURL = IHEART + stations[x].code;
+			$('#stationList').append('<li><a href="'+sURL
+				+ '" target="bam" onclick="document.body.style.backgroundColor=\''+stations[x].color+'\'">' 
+				+ stations[x].title+'</li>');
 		}
+		document.all.bam.src = IHEART + stations[0].code;
+	}
+		
+	
+		
+		
 	</script>
 </head>
 <body style="background-color:lightblue" onload="main()">
 <iframe height="122" width="322" name="bam"></iframe>
+<ul id="stationList">
+</ul>
+
+</body>
+<!--
+different URL's
+n23a-e2.revma.ihrhls.com
+n11a-e2.revma.ihrhls.com
+n0ba-e2.revma.ihrhls.com
+n32a-e2.revma.ihrhls.com
+
 <ul>
 	<li><a href="https://stream.revma.ihrhls.com/zc8143" target="bam" id="first">Breeze</a></li>
 	<li><a href="https://stream.revma.ihrhls.com/zc3949" target="bam">Pride</a></li>
@@ -35,12 +87,5 @@
 	<li><a href="https://stream.revma.ihrhls.com/zc4596" target="bam">Christmas Favs</a></li>
 </ul>
 
-</body>
-<!--
-different URL's
-n23a-e2.revma.ihrhls.com
-n11a-e2.revma.ihrhls.com
-n0ba-e2.revma.ihrhls.com
-n32a-e2.revma.ihrhls.com
 -->
 </html>
