@@ -32,17 +32,24 @@ var stations =
 {code:"zc6137", title:"Christmas Classics", color:"#00FA9A" },
 {code:"zc4596", title:"Christmas Favs", color:"#FF3030" }
 ];		
-	
+	function changeStation(xStation)
+    {
+        xStation = xStation ? xStation : 0;
+        document.body.style.backgroundColor=stations[xStation].color;
+        document.all.statName.innerHTML = stations[xStation].title;
+        
+    }
 	function main()
 	{
 		for(var x=0; x < stations.length; x++)
 		{
 			var sURL = IHEART + stations[x].code;
 			$('#stationList').append('<li><a href="'+sURL
-				+ '" target="bam" onclick="document.body.style.backgroundColor=\''+stations[x].color+'\'">' 
+				+ '" target="bam" onclick="changeStation('+x+')">' 
 				+ stations[x].title+'</li>');
 		}
-		document.all.bam.src = IHEART + stations[0].code;
+		//document.all.bam.src = IHEART + stations[0].code;
+        changeStation(0);
 	}
 		
 	
@@ -51,6 +58,7 @@ var stations =
 	</script>
 </head>
 <body style="background-color:lightblue" onload="main()">
+<H3 id="statName"></H3>
 <iframe height="122" width="322" name="bam"></iframe>
 <ul id="stationList">
 </ul>
