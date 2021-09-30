@@ -79,4 +79,3 @@ print_r("temp:" . $return_data['current_observation']['condition']['temperature'
 
 
 
-?>

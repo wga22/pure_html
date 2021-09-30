@@ -37,7 +37,7 @@ var stations =
         xStation = xStation ? xStation : 0;
         document.body.style.backgroundColor=stations[xStation].color;
         document.all.statName.innerHTML = stations[xStation].title;
-        
+        document.all.bam.play();
     }
 	function main()
 	{
@@ -48,7 +48,7 @@ var stations =
 				+ '" target="bam" onclick="changeStation('+x+')">' 
 				+ stations[x].title+'</li>');
 		}
-		//document.all.bam.src = IHEART + stations[0].code;
+		document.all.bam.src = IHEART + stations[0].code;
         changeStation(0);
 	}
 		
