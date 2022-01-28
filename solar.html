@@ -59,9 +59,9 @@ function maxVal()
 	//timezone=America%2FNew_York&
 	var sTPURL = 'https://api.thingspeak.com/channels/'+channel_id+'/feeds.json?timezone=America%2FNew_York&api_key='+api_key;
 	var oFields = {
-		BATT_VOLT: {tp: "field1", label:"Batt(mV)", func:maxVal},
+		BATT_VOLT: {tp: "field1", label:"Batt(V)", func:maxVal},
 		BATT_CURR:{tp: "field2", label:"Batt(I)", func:maxVal},
-		PANEL_VOLT:{tp:  "field3",label:"Panel(mV)", func:maxVal},
+		PANEL_VOLT:{tp:  "field3",label:"Panel(V)", func:maxVal},
 		PANEL_POW:{tp:  "field4", label:"Panel(W)", func:maxVal},
 		CHARGE_STATE:{tp:  "field5",label:"Charge State", func:chargeState},
 		CURRENT_LOAD: {tp: "field6",label:"Load(I)", func:maxVal},
@@ -146,11 +146,28 @@ function gatherData()
 					{
 						if("CHARGE_STATE" == q )
 						{
-							if(0 <  parseInt(this[oFields[q].tp]))	//count number of times there was charging going on
+                           // var nCharge = parseInt(this[oFields[q].tp]);
+							if(0 <  val && val < 20)	//count number of times there was charging going on
 							{
 								oDailyData[sYMD][q] = oDailyData[sYMD][q] + 1;
 							}
 							//$('#debug').append("<li>"+parseInt(this[oFields[q].tp]) + " </li>");
+						}
+						else if("BATT_VOLT" == q || "PANEL_VOLT"==q)
+						{
+							oDailyData[sYMD][q] = Math.max(oDailyData[sYMD][q], cleanUpValue(val/10, 4000,100));
+						}
+						else if("BATT_CURR" == q || "CURRENT_LOAD"==q)
+						{
+							oDailyData[sYMD][q] = Math.max(oDailyData[sYMD][q], cleanUpValue(val/10, 6000,100));
+						}
+                        else if("YIELD" == q )
+						{
+							oDailyData[sYMD][q] = Math.max(oDailyData[sYMD][q], cleanUpValue(val, 600,100));
+						}
+                        else if( "MAX_POWER" == q)
+						{
+							oDailyData[sYMD][q] = Math.max(oDailyData[sYMD][q], cleanUpValue(val, 600));
 						}
 						else
 						{
@@ -191,6 +208,21 @@ function gatherData()
 		) //getJSON
 	}	// for loop
 }
+
+function cleanUpValue(nValue, nMAX, nDivisor)
+{
+	var nRes = nValue;
+    if(nValue < 0 || nValue > nMAX)
+    {
+         nRes = 0;
+    }
+    if(nDivisor)
+    {
+        nRes = Math.round(nRes*100/nDivisor)/100;
+    }
+    return nRes;
+}
+
 
 function writeChargeState(nChargeState)
 {
@@ -234,6 +266,8 @@ function panelVoltClean(nVolts)
 	return nVolts;
 }
 
+   
+
 function writeTheValues(oVals, sTable)
 {
 	//compute the averages for each month, and write it to a dataset for output to a table.
@@ -241,9 +275,9 @@ function writeTheValues(oVals, sTable)
 	for (var x in oVals)
 	{
 		//$('#debug').append("<li>loading month: "+x+"</li>");
-		
+
 		var od = oVals[x];
-		aDeltasPerDay.push([x, od["BATT_VOLT"], panelVoltClean(od["PANEL_VOLT"]), Math.max(od["BATT_CURR"],od["CURRENT_LOAD"]), (od["YIELD"]/100),od["MAX_POWER"], od["CHARGE_STATE"]])
+		aDeltasPerDay.push([x, od["BATT_VOLT"], od["PANEL_VOLT"],Math.max(od["BATT_CURR"],od["CURRENT_LOAD"]),od["YIELD"],od["MAX_POWER"],od["CHARGE_STATE"]]);
 	}
 	//drawTheChartOfDiffs(aDeltasPerDay);
 	//write out the table
@@ -255,7 +289,7 @@ function writeTheValues(oVals, sTable)
 			{ title: "Date" },
 			{ title: oFields["BATT_VOLT"].label },
 			{ title: oFields["PANEL_VOLT"].label },
-			{ title: "Max Batt/Load Current (mA)" },
+			{ title: "Max Batt/Load Current (A)" },
 			{ title: oFields["YIELD"].label },
 			{ title: oFields["MAX_POWER"].label },
 			{ title: "Count of Charging" }
