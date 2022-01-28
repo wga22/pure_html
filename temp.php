@@ -20,4 +20,16 @@ $return_data = json_decode($response, true);
 print_r("temp:" . (9/5*floatval($return_data['temperature'])+32));
 
 
+//print_r('<p>this is the processed' .$return_data);
+//print_r("<p>TEMP1: " . ($return_data  -> {'current_observation'} ));
+//print_r("<p>TEMP2: " . ($return_data  -> {'current_observation'}  -> {'condition'}));
+//print_r("<p>TEMP3: " . ($return_data  -> {'current_observation'}  -> {'condition'}  -> {'temperature'}));
+//print_r("<p>TEMP4: " . ($return_data  -> {'current_observation'}  -> {'condition'}  -> {'temperature'}));
+
+
+
+
+
+
+
 ?>
