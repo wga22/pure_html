@@ -17,19 +17,24 @@ $response = curl_exec($ch);
 curl_close($ch);
 
 $return_data = json_decode($response, true);
-print_r("temp:" . (9/5*floatval($return_data['temperature'])+32));
+$temp = floatval($return_data['temperature']);
 
+#print_r(strlen($return_data['temperature']));
+
+if(strlen($return_data['temperature'])==0 || is_null($temp))
+{
+    print_r("temp:" . -100);
+}
+else
+{
+    print_r("temp:" . (9/5*$temp+32));
+}
 
 //print_r('<p>this is the processed' .$return_data);
 //print_r("<p>TEMP1: " . ($return_data  -> {'current_observation'} ));
 //print_r("<p>TEMP2: " . ($return_data  -> {'current_observation'}  -> {'condition'}));
 //print_r("<p>TEMP3: " . ($return_data  -> {'current_observation'}  -> {'condition'}  -> {'temperature'}));
 //print_r("<p>TEMP4: " . ($return_data  -> {'current_observation'}  -> {'condition'}  -> {'temperature'}));
-
-
-
-
-
 
 
 ?>
