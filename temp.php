@@ -1,40 +1,114 @@
 <?php
-//info: other options https://github.com/public-apis/public-apis#weather
-//TODO: change to this: https://goweather.herokuapp.com/weather/22182
+/*
+title: pull current temperature into format easily read by ESP8266
+OUTPUT:  temp: XXXX  
+DATE: 2022-05
 
-$url = 'https://goweather.herokuapp.com/weather/22182';
+Notes:
+info: other options https://github.com/public-apis/public-apis#weather
+change over to https://goweatherforecast.com/current?lat=38.8978&lng=-77.2885&search=&ts=1651595109
+<span id="currentTemperature">16<sup>o</sup>C </span></p>
 
-$options = array(
-    CURLOPT_HEADER => false,
-    CURLOPT_URL => $url,
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_SSL_VERIFYPEER => false
-);
+*/
 
-$ch = curl_init();
-curl_setopt_array($ch, $options);
-$response = curl_exec($ch);
-curl_close($ch);
+//CONSTANTS
+$heroURL = 'https://goweather.herokuapp.com/weather/22182-';
+$backupSite= 'https://goweatherforecast.com/current?lat=38.8978&lng=-77.2885&search=&ts=1';
 
-$return_data = json_decode($response, true);
-$temp = floatval($return_data['temperature']);
-
-#print_r(strlen($return_data['temperature']));
-
-if(strlen($return_data['temperature'])==0 || is_null($temp))
+$hTemp = getHeroTemp();
+$temp=-100; //try for something better, but -100 implies something wrong
+//print_r("hero" . $hTemp . "<p>");
+if( $hTemp > -100)
 {
-    print_r("temp:" . -100);
+    $temp = toFarenheit($hTemp);
 }
-else
+else    //try a second site
 {
-    print_r("temp:" . (9/5*$temp+32));
+    $bkTemp = tryBackupSite();
+    if($bkTemp > -100)
+    {
+        $temp = toFarenheit($bkTemp);
+    }
 }
 
-//print_r('<p>this is the processed' .$return_data);
-//print_r("<p>TEMP1: " . ($return_data  -> {'current_observation'} ));
-//print_r("<p>TEMP2: " . ($return_data  -> {'current_observation'}  -> {'condition'}));
-//print_r("<p>TEMP3: " . ($return_data  -> {'current_observation'}  -> {'condition'}  -> {'temperature'}));
-//print_r("<p>TEMP4: " . ($return_data  -> {'current_observation'}  -> {'condition'}  -> {'temperature'}));
+print_r("temp:" . $temp);
 
+function toFarenheit($celTemp)
+{
+    return 9/5*$celTemp+32;
+}
+
+
+function getHeroTemp()
+{
+    $res = getSite('https://goweather.herokuapp.com/weather/22182');
+    $return_data = json_decode($response, true);
+    $temp = floatval($return_data['temperature']);    
+    if(strlen($return_data['temperature'])==0 || is_null($temp))
+    {
+        //print_r("<p>cannot find hero: " . $temp);
+        $temp=-100;
+    }
+    return $temp;
+}
+
+
+function tryBackupSite()
+{
+    //<span id="currentTemperature">16<sup>o</sup>C </span></p>
+    $dom = new DomDocument(); 
+    $dom->loadHTML(getSite('https://goweatherforecast.com/current?lat=38.8978&lng=-77.2885&search=&ts=1'));   
+    $xpath = new DOMXpath($dom);
+    $currentTemp=parseToArray($xpath,'currentTemperature');
+    if(!is_null($currentTemp) && count($currentTemp)>0)
+    {
+        $temp=floatval($currentTemp[0]);
+    }
+    return $temp;
+}
+
+function parseToArray($xpath,$id)
+{
+	$xpathquery="//span[@id='".$id."']";
+	$elements = $xpath->query($xpathquery);
+
+	if (!is_null($elements)) {	
+		$resultarray=array();
+		foreach ($elements as $element) {
+		    $nodes = $element->childNodes;
+		    foreach ($nodes as $node) {
+		      $resultarray[] = $node->nodeValue;
+		    }
+		}
+		return $resultarray;
+	}
+}
+
+function getSite($getUrl)
+{
+    //$getUrl = 'https://goweather.herokuapp.com/weather/22182';
+    $options = array(
+        CURLOPT_HEADER => false,
+        CURLOPT_URL => $getUrl,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_SSL_VERIFYPEER => false
+    );
+
+    $ch = curl_init();
+    curl_setopt_array($ch, $options);
+    $response = curl_exec($ch);
+    curl_close($ch);
+    //print_r("<br>URL:" .strlen($getUrl) . '<br>response:' . strlen($response));
+    return $response;
+}
+
+
+/*
+JUNK
+var_dump($heading);
+echo "<br/>";
+var_dump($content);
+echo "<br/>";
+*/
 
 ?>
