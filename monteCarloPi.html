@@ -191,11 +191,11 @@ function randomSpot(nMaxVal)
 </tr>
 <tr>
 	<td rowspan="3">
-	<canvas width="603" height="610" id="canvas1" style="background:white" onclick="canvasClicked()" onmousemove="mouseoverpi()"></canvas><br/>
+	<canvas width="603" height="610" id="canvas1" style="background:white" onclick="canvasClicked()"></canvas><br/>
 	</td>
 	<td>
 		<ul> <b>Instructions</b>
-			<li>Hold your mouse over the canvas to generate random dots</li>
+			<li>Move your mouse (or touch with finger) over the canvas to generate random dots</li>
 			<li>Click the canvas to update your approximation</li>
 		</ul>	
 	</td>
@@ -231,6 +231,7 @@ function randomSpot(nMaxVal)
 
 <tr>
 	<td colspan="2">
+    <div class="alignleft">    
 	<a id="stupid">
 		<img src="./images/amazon.jpg"/>
 	</a>
@@ -252,6 +253,7 @@ function mainPI()
 	mcp = new MonteCarloPi();
 	MonteCarloPi.dom=document;
 	var canvas = MonteCarloPi.dom.getElementById("canvas1");
+    canvas.onmousemove=mouseoverpi;
 	MonteCarloPi.piImage = MonteCarloPi.dom.getElementById("piimg");
 	MonteCarloPi.piContent = MonteCarloPi.dom.getElementsByName("picontent");
 	
@@ -262,14 +264,15 @@ function mainPI()
 	{
 		mcp.doDrawing();
 	}
-        stupid_();
+    stupid_();
 }
 
 function stupid_()
 {
-        var aParts = ["ht","tps://www.am","azon.com/", "dp/B003T","U7PPQ","/ref=as_","li_ss_t","il?tag=w","illal","ledev","e-20&camp=","0&cre","ati","ve=0&linkC","ode=as4&cr","eativeASI","N=B00","3TU7PP","Q&adid=0Z",
-        "C69","1MTS","3VZAV","AB0J","54&"];
-        MonteCarloPi.dom.getElementById("stupid").href = aParts.join("");
+    var aParts = ["htt","ps://www.am","azon.co","m/b?_encod","ing=UTF8&t","ag=willall",
+    "edeve-20&li","nkCode=ur2&li","nkId=ea8eba7110ad9","2e26afebdc7","2fdf193b&c",
+    "amp=1789&cr","eative=9","325&n","ode=979","455011"];
+    MonteCarloPi.dom.getElementById("stupid").href = aParts.join("");
 }
 
 function mouseoverpi()
@@ -289,17 +292,5 @@ function canvasClicked()
 		mcp.writeContent();
 	}
 }
-
-
-  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-
-  ga('create', 'UA-550134-9', 'scienceontheweb.net');
-  ga('send', 'pageview');
-
-
-
 </script>
 </html>
