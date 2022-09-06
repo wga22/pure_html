@@ -35,7 +35,6 @@ Feature ideas:
 	
 	
 	
-	
 function chargeState()
 {
 	
@@ -69,6 +68,7 @@ function maxVal()
 		MAX_POWER: {tp: "field8", label:"Power(W)", func:maxVal}
 		};
 	var oDailyData = {};
+    var oLatestData = {BATT_VOLT:0, PANEL_VOLT:0, time:"missing"};
 	var nLoadedMonths = 0;
 
 function getDateToTSStringFirstDay(a_oDate)
@@ -105,6 +105,7 @@ function gatherData()
 	//determine the monthly average daily temperature difference when attic is hotter than outside
 	var oMonthToLoad = new Date();
 	oMonthToLoad.setMonth(oMonthToLoad.getMonth()+1);	//increment the date one month forward
+    
 	for(var x=0; x < NMONTHSTOLOAD; x++)
 	{
 		//  start (datetime) Start date in format YYYY-MM-DD%20HH:NN:SS (optional) (stop is the same)
@@ -115,7 +116,7 @@ function gatherData()
 		
 		$.getJSON(sTPURLbyDate, function(data)
 		{
-			$.each(data.feeds, function() 
+            $.each(data.feeds, function(index,element) 
 			{	
 				/*
 				//FIELDS:	BATT_VOLT, BATT_CURR, PANEL_VOLT, PANEL_POW, CHARGE_STATE, CURRENT_LOAD, YIELD, MAX_POWER			
@@ -155,7 +156,20 @@ function gatherData()
 						}
 						else if("BATT_VOLT" == q || "PANEL_VOLT"==q)
 						{
-							oDailyData[sYMD][q] = Math.max(oDailyData[sYMD][q], cleanUpValue(val/10, 4000,100));
+                            //populate latest
+                            if((index+1)==data.feeds.length)
+                            {
+                                if("BATT_VOLT" == q && oLatestData.BATT_VOLT==0)
+                                {
+                                    oLatestData.BATT_VOLT = cleanUpValue(val/10, 4000,100);
+                                    oLatestData.time = time;
+                                }
+                                if("PANEL_VOLT" == q && oLatestData.PANEL_VOLT==0)
+                                {
+                                    oLatestData.PANEL_VOLT = cleanUpValue(val/10, 4000,100);
+                                }
+                            }
+                            oDailyData[sYMD][q] = Math.max(oDailyData[sYMD][q], cleanUpValue(val/10, 4000,100));
 						}
 						else if("BATT_CURR" == q || "CURRENT_LOAD"==q)
 						{
@@ -302,6 +316,19 @@ function writeTheValues(oVals, sTable)
 	return Math.round(nNum * 100)/100;
  }
  
+ function writeLatest(a_oVals)
+ {
+    const ltime = document.getElementById('ltime');
+    const lpanel = document.getElementById('lpanel');
+    const lbattery = document.getElementById('lbattery');
+    
+    ltime.innerHTML = a_oVals.time;
+    lpanel.innerHTML = a_oVals.PANEL_VOLT
+    lbattery.innerHTML = a_oVals.BATT_VOLT;
+    
+    
+ }
+ 
  function waitAndWriteVals()
  {
 	
@@ -309,7 +336,7 @@ function writeTheValues(oVals, sTable)
 	{
 		//writeTheValues();
 		writeTheValues(oDailyData, "#solar_data_table");
-		
+		writeLatest(oLatestData);
 	}
 	else
 	{
@@ -463,15 +490,19 @@ function writeTheValues(oVals, sTable)
   <p>
 	More data details are available on <a href="https://thingspeak.com/channels/140150">ThingSpeak</a>.
   </p>
-  
-<H3>Daily Yield</H3>
-<!--
- <div id="tempDiffChart" class="ct-series-a ct-line"></div>
- <ul>
- <li>Red - change in indoor/outdoor temp - Negative good</li>
- <li>Dotted Orange - change in outdoor temp - negative shows lower value from 12 months prior</li>
- </ul>
- -->
+<table border="1">
+    <tr>
+        <th>Latest time</th>
+        <th>Latest Panel</th>
+        <th>Latest Battery</th>
+    </tr>
+    <tr>
+        <td id="ltime"></td>
+        <td id="lpanel"></td>
+        <td id="lbattery"></td>
+    </tr>
+</table>  
+
 <div class="solar_chart_style">
   <H3>Solar Data</H3>
 	<table id="solar_data_table" class="display" width="80%"></table>
