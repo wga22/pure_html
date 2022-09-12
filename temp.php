@@ -9,6 +9,9 @@ info: other options https://github.com/public-apis/public-apis#weather
 change over to https://goweatherforecast.com/current?lat=38.8978&lng=-77.2885&search=&ts=1651595109
 <span id="currentTemperature">16<sup>o</sup>C </span></p>
 
+--TODO:
+1) track downtime of the 2 sites
+
 */
 
 //CONSTANTS
