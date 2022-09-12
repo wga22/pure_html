@@ -68,7 +68,7 @@ function maxVal()
 		MAX_POWER: {tp: "field8", label:"Power(W)", func:maxVal}
 		};
 	var oDailyData = {};
-    var oLatestData = {BATT_VOLT:0, PANEL_VOLT:0, time:"missing"};
+    var oLatestData = {BATT_VOLT:-1, PANEL_VOLT:-1, time: (new Date(new Date().getTime() - MILLISPERMONTH/2))};
 	var nLoadedMonths = 0;
 
 function getDateToTSStringFirstDay(a_oDate)
@@ -157,14 +157,15 @@ function gatherData()
 						else if("BATT_VOLT" == q || "PANEL_VOLT"==q)
 						{
                             //populate latest
-                            if((index+1)==data.feeds.length)
+                            //if((index+1)==data.feeds.length)
+                            if(oLatestData.time <= time)
                             {
-                                if("BATT_VOLT" == q && oLatestData.BATT_VOLT==0)
+                                oLatestData.time = time;
+                                if("BATT_VOLT" == q && oLatestData.BATT_VOLT==-1)
                                 {
                                     oLatestData.BATT_VOLT = cleanUpValue(val/10, 4000,100);
-                                    oLatestData.time = time;
                                 }
-                                if("PANEL_VOLT" == q && oLatestData.PANEL_VOLT==0)
+                                if("PANEL_VOLT" == q && oLatestData.PANEL_VOLT==-1)
                                 {
                                     oLatestData.PANEL_VOLT = cleanUpValue(val/10, 4000,100);
                                 }
