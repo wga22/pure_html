@@ -161,11 +161,11 @@ function gatherData()
                             if(oLatestData.time <= time)
                             {
                                 oLatestData.time = time;
-                                if("BATT_VOLT" == q && oLatestData.BATT_VOLT==-1)
+                                if("BATT_VOLT" == q )
                                 {
                                     oLatestData.BATT_VOLT = cleanUpValue(val/10, 4000,100);
                                 }
-                                if("PANEL_VOLT" == q && oLatestData.PANEL_VOLT==-1)
+                                if("PANEL_VOLT" == q )
                                 {
                                     oLatestData.PANEL_VOLT = cleanUpValue(val/10, 4000,100);
                                 }
