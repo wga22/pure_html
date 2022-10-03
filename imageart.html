@@ -1,0 +1,96 @@
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    canvas {
+      display: block;
+      width: 800px;
+      height: 500px;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+<h2>Image Art</h2>
+
+<canvas width="1600" height="1000"></canvas>
+<script src="https://d3js.org/d3.v5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stackblur-canvas/2.5.0/stackblur.min.js"></script>
+
+
+<script>
+const canvas = document.querySelector("canvas"),
+  context = canvas.getContext("2d"),
+  img = new Image(),
+  width = 800,
+  height = 1000,
+  threshold = 0.9,
+  worker = new Worker("imageworker.js");
+
+context.fillStyle = "#444";
+
+img.onload = function() {
+  // Draw image
+  context.drawImage(img, 0, 0, width, height);
+
+  // Blur image to smooth it out
+  StackBlur.canvasRGBA(canvas, 0, 0, width, height, 5);
+  const density = getDensityFunction(context);
+
+  context.drawImage(img, 0, 0, width, height);
+
+  // Get initial points
+  const points = generatePoints(density, 10000);
+
+  worker.onmessage = event => draw(event.data);
+
+  // Compute in worker
+  worker.postMessage({ density, points, width, height, threshold });
+};
+
+img.src = "https://willcloud.crabdance.com/images/boat.png";
+
+// Draw the points
+function draw(points) {
+  context.clearRect(width, 0, width, height);
+
+  points.forEach(function(point) {
+    context.beginPath();
+
+    if (point.r) {
+      context.arc(width + point[0], point[1], point.r, 0, 2 * Math.PI);
+      context.fill();
+    }
+  });
+}
+
+function generatePoints(density, numPoints) {
+// Generate starting points with rejection sampling against pixel brightness
+  return d3.range(numPoints).map(function() {
+    let x, y, d;
+
+    while (true) {
+      x = Math.random() * width;
+      y = Math.random() * height;
+
+      d = density[width * Math.floor(y) + Math.floor(x)];
+
+      if (Math.random() > d) {
+        return [x, y, d];
+      }
+    }
+  });
+}
+
+// Convert imageData into an array of brightness values from 0-1
+function getDensityFunction(context) {
+  const data = context.getImageData(0, 0, width, height).data;
+
+  return d3.range(0, data.length, 4).map(i => data[i] / 255);
+}
+
+
+</script>
+
+</body>
+</html>

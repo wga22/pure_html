@@ -130,8 +130,8 @@ function gatherData()
 				var nMaxPower = parseFloat(this[oFields.MAX_POWER.tp]);
 				var nYield = parseFloat(this[oFields.YIELD.tp])/100;
 				*/
-				var time = new Date(this["created_at"]);
-				var sYMD = getDateString(time);				
+				var dataPointTime = new Date(this["created_at"]);
+				var sYMD = getDateString(dataPointTime);				
 				if(!oDailyData[sYMD])
 				{
 					oDailyData[sYMD] = {};
@@ -158,15 +158,17 @@ function gatherData()
 						{
                             //populate latest
                             //if((index+1)==data.feeds.length)
-                            if(oLatestData.time <= time)
+                            if(oLatestData.time <= dataPointTime)
                             {
-                                oLatestData.time = time;
+                                oLatestData.time = dataPointTime;
                                 if("BATT_VOLT" == q )
                                 {
+                                    //alert(val)
                                     oLatestData.BATT_VOLT = cleanUpValue(val/10, 4000,100);
                                 }
                                 if("PANEL_VOLT" == q )
                                 {
+                                    //alert(val)
                                     oLatestData.PANEL_VOLT = cleanUpValue(val/10, 4000,100);
                                 }
                             }
