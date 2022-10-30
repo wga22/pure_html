@@ -87,8 +87,9 @@ function calculate()
 		var dAge = getDogAge(ageDiff)
 		aRow[0] = dogList[x].name;
 		aRow[1] = dogList[x].birthdate;
-		aRow[2] = Math.round(ageDiff);
+		aRow[2] = Math.round(ageDiff*10)/10;
 		aRow[3] = dAge;
+        aRow[4] = Math.round(ageDiff*70)/10;;
 		//$('#dogs').append("<li>"+dogList[x].name +"  born: " + dogList[x].birthdate +" actual years: " + Math.round(ageDiff) + " human years:"+dAge+"</li>");
 		dogData[x] = aRow;
 	}
@@ -97,7 +98,8 @@ function calculate()
             { title: "Dog" , "type": "string" },
 			{ title: "Birthday" , "type": "date" },
 			{ title: "Actual Age" , "type": "num" },
-			{ title: "Dog Age" , "type": "num" }
+			{ title: "New Dog-Age" , "type": "num" },
+            { title: "Old Dog-Age" , "type": "num" }
         ];
 
 
