@@ -33,7 +33,12 @@ Feature ideas:
 	
 	<script type='text/javascript'>
 	
-	
+function getShortDateString(a_oDate)
+{
+	var sMonth = (a_oDate.getMonth() + 1);
+	sMonth = (sMonth < 10)? ("0"+sMonth) : (sMonth + "");
+	return a_oDate.getFullYear() + "-" + sMonth;
+}	
 	
 function chargeState()
 {
@@ -319,17 +324,31 @@ function writeTheValues(oVals, sTable)
 	return Math.round(nNum * 100)/100;
  }
  
+ //return % remaining on LIFEPO4 battery
+ function percBattPower(nBatt)
+ {
+    return Math.max(0,Math.min(Math.round(10*(nBatt-12.7718)/0.0690476),100)) + "%"
+    //const aVals = [12.80,12.90,13.00,13.10,13.14,13.17,13.20,13.25,13.30, 13.40]
+ }
+ 
+ 
  function writeLatest(a_oVals)
  {
     const ltime = document.getElementById('ltime');
     const lpanel = document.getElementById('lpanel');
     const lbattery = document.getElementById('lbattery');
     
-    ltime.innerHTML = a_oVals.time;
+    ltime.innerHTML = (new Date(a_oVals.time)).toLocaleString();
     lpanel.innerHTML = a_oVals.PANEL_VOLT
-    lbattery.innerHTML = a_oVals.BATT_VOLT;
+    lbattery.innerHTML = percBattPower(a_oVals.BATT_VOLT);
     
-    
+    /*
+    for(var x=0; x < 20; x++)
+    {
+        var nVal = Math.round((x/15 + 12.70)*100)/100;
+        $('#debug').append("<li> "+nVal + " - " +percBattPower(nVal)+" </li>")
+    }
+    */        
  }
  
  function waitAndWriteVals()
@@ -498,11 +517,15 @@ function writeTheValues(oVals, sTable)
         <th>Latest time</th>
         <th>Latest Panel</th>
         <th>Latest Battery</th>
+        <th>Battery 90%</th>
+        <th>Battery 10%</th>
     </tr>
     <tr>
         <td id="ltime"></td>
         <td id="lpanel"></td>
         <td id="lbattery"></td>
+        <td>13.30</td>
+        <td>12.80</td>
     </tr>
 </table>  
 
