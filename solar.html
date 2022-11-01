@@ -340,7 +340,7 @@ function writeTheValues(oVals, sTable)
     
     ltime.innerHTML = (new Date(a_oVals.time)).toLocaleString();
     lpanel.innerHTML = a_oVals.PANEL_VOLT
-    lbattery.innerHTML = percBattPower(a_oVals.BATT_VOLT);
+    lbattery.innerHTML = a_oVals.BATT_VOLT + " (" + percBattPower(a_oVals.BATT_VOLT) + ")";
     
     /*
     for(var x=0; x < 20; x++)
