@@ -328,9 +328,32 @@ function writeTheValues(oVals, sTable)
  function percBattPower(nBatt)
  {
     return Math.max(0,Math.min(Math.round(10*(nBatt-12.7718)/0.0690476),100)) + "%"
-    //const aVals = [12.80,12.90,13.00,13.10,13.14,13.17,13.20,13.25,13.30, 13.40]
+    //const aVals = [12.80, 12.90, 13.00, 13.10, 13.14, 13.17, 13.20, 13.25, 13.30, 13.40]
  }
- 
+
+ function percBattPower2(nBatt)
+ {
+    var nPerc = 0;
+    nBatt = Math.max(nBatt-12.70, 0);
+    //first .4volts are even 10%
+    if(nBatt<=.40)  //10,20,30,40, 12.80, 12.90, 13.00, 13.10
+    {
+        nPerc=nBatt;
+    }
+    //under .6 go up 10% for each .04v
+    else if(nBatt<=0.65)
+    {
+        nPerc = .4 + ((nBatt-.4)*2.3);
+    }
+    else if(nBatt>0.65)
+    {
+        nPerc = 1;
+    }
+    
+    return Math.round(nPerc*100) + "%"
+    //const aVals = [, 13.14, 13.17, 13.20, 13.25, 13.30, 13.40]
+ }
+  
  
  function writeLatest(a_oVals)
  {
@@ -346,9 +369,9 @@ function writeTheValues(oVals, sTable)
     for(var x=0; x < 20; x++)
     {
         var nVal = Math.round((x/15 + 12.70)*100)/100;
-        $('#debug').append("<li> "+nVal + " - " +percBattPower(nVal)+" </li>")
+        $('#debug').append("<li> "+nVal + " - " +percBattPower2(nVal)+" </li>")
     }
-    */        
+    */
  }
  
  function waitAndWriteVals()
