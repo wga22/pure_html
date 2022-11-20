@@ -36,13 +36,28 @@ var stations =
 {type:"rp", code:"flac", title:"Radio Paradise-Main", color:"#222230" }
 
 ];		
-	function changeStation(xStation)
+
+	function changeStation(sURL, xStation)
     {
         xStation = xStation ? xStation : 0;
         document.body.style.backgroundColor=stations[xStation].color;
         document.all.statName.innerHTML = stations[xStation].title;
-        document.all.bam.play();
+        document.all.source1.src = sURL;
+        document.all.player.load();
+        //setTimeout(startPlayingWait, 2000);
+        document.all.player.play()
+        //TODO: get the iframe to start playing
+        //document.all.bam.play();
+        //document.all.bam.onload = startPlaying;
     }
+    
+    function startPlayingWait()
+    {
+       //alert("start playing")
+       //document.all.bam.
+       document.all.player.play();
+    }
+    
 	function main()
 	{
 		for(var x=0; x < stations.length; x++)
@@ -56,17 +71,16 @@ var stations =
             {
                 sURL = IHEART + stations[x].code;
             }
-            //initiate first station
+            /* TODO - figure out autoplay 
+            // NOT NEEDED WHEN we just use the default URL in the source1
             if(x==0)
             {
-                document.all.bam.src = sURL;
+                //changeStation(sURL, 0);
             }
-            
-			$('#stationList').append('<li><a href="'+sURL
-				+ '" target="bam" onclick="changeStation('+x+')">' 
-				+ stations[x].title+'</li>');
+            /*
+			$('#stationList').append('<li><a href="#" onclick=\"changeStation(\''+sURL+'\','+x+')\">' + stations[x].title+'</li>');   
 		}
-        changeStation(0);
+        //changeStation2(0);
 	}
 		
 	
@@ -74,14 +88,24 @@ var stations =
 		
 	</script>
 </head>
-<body style="background-color:lightblue" onload="main()">
+<body style="background-color:lightblue; a{cursor: pointer; }" onload="main()">
 <H3 id="statName"></H3>
-<iframe height="122" width="322" name="bam"></iframe>
+<video controls=""  allow="autoplay" autoplay="" name="media" id="player"><source id="source1" src="https://n3cb-e2.revma.ihrhls.com/zc6850" type="audio/aac"></video>
+
+
 <ul id="stationList">
 </ul>
 
 </body>
 <!--
+
+
+<video controls="" autoplay="" name="media"><source src="https://n3cb-e2.revma.ihrhls.com/zc6137?rj-ttl=5&amp;rj-tok=AAABhJLAxHIAQxqvoUu5vJBKpw" type="audio/aac"></video>
+
+
+
+
+
 different URL's
 n23a-e2.revma.ihrhls.com
 n11a-e2.revma.ihrhls.com
