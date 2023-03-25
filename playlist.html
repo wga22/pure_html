@@ -78,7 +78,7 @@ var stations =
                 //changeStation(sURL, 0);
             }
             */
-			$('#stationList').append('<li><a href="#" onclick=\"changeStation(\''+sURL+'\','+x+')\">' + stations[x].title+'</li>');   
+			$('#stationList').append('<li><a href="#" onclick=\"changeStation(\''+sURL+'\','+x+')\">#EXTINF:0,' + stations[x].title+'<br>'+sURL+'</li>');   
 		}
         //changeStation2(0);
 	}
