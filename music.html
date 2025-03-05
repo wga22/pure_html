@@ -8,11 +8,13 @@
 
 const IHEART = "https://stream.revma.ihrhls.com/";
 const RADIOPARADISE = "http://stream-dc1.radioparadise.com/";
+const FIOS = "http://192.168.86.111:5004/auto/v";    //LAN only - UNUSED
 
 var stations = 
 [
 {type: "iheart", code:"zc8143", title:"Breeze", color:"DeepSkyBlue" },
 {type: "iheart", code:"zc3949", title:"Pride", color:"DarkOrchid" },
+{type: "iheart", code:"zc8681", title:"Yacht", color:"Aquamarine" },
 {type: "iheart", code:"zc4422", title:"Hits", color:"yellow" },
 {type: "iheart", code:"zc4409", title:"80s to Today", color:"LawnGreen" },
 {type: "iheart", code:"zc8478", title:"2010's", color:"#698B69" },
@@ -23,6 +25,8 @@ var stations =
 {type: "iheart", code:"zc6788", title:"Reggae", color:"#1E90FF" },
 {type: "iheart", code:"zc7078", title:"Classic Rock", color:"#97FFFF" },
 {type: "iheart", code:"zc6878", title:"Vinyl Classic Rock", color:"#F5F5DC" },
+{type: "iheart", code:"zc8626", title:"The Brew - new Classic Rock", color:"#F5F5DC" },
+{type: "iheart", code:"zc6951", title:"Cafe - Mellow Classic Rock", color:"#aaFF89" },
 {type: "iheart", code:"zc6377", title:"Classical", color:"#B0C4DE" },
 {type: "iheart", code:"zc4717", title:"Real Oldies", color:"#8B795E" },
 {type: "iheart", code:"zc4439", title:"Cool Oldies", color:"#FF1493" },
@@ -33,7 +37,8 @@ var stations =
 {type: "iheart", code:"zc6137", title:"Christmas Classics", color:"#00FA9A" },
 {type: "iheart", code:"zc4596", title:"Christmas Favs", color:"#FF3030" },
 {type:"rp", code:"mellow-flac", title:"Radio Paradise-Mellow", color:"#223030" },
-{type:"rp", code:"flac", title:"Radio Paradise-Main", color:"#222230" }
+{type:"rp", code:"flac", title:"Radio Paradise-Main", color:"#222230" },
+{type:"fios", code:"1818", title:"FIOS Soft Rock", color:"#222230" }
 
 ];		
 
@@ -63,13 +68,18 @@ var stations =
 		for(var x=0; x < stations.length; x++)
 		{
 			var sURL = "";
-            if(stations[x].type=="rp")
+            if("rp" ===stations[x].type)
             {
                 sURL = RADIOPARADISE + stations[x].code;
             }
-            else //type will be iheart
+            else if("iheart" ===stations[x].type)//type will be iheart
             {
                 sURL = IHEART + stations[x].code;
+            }
+            else if("fios" ===stations[x].type)//type will be iheart
+            {
+               //BROKEN for now sURL = FIOS + stations[x].code;
+               continue;    //dont write out this row
             }
             /* TODO - figure out autoplay 
             // NOT NEEDED WHEN we just use the default URL in the source1
@@ -92,45 +102,13 @@ var stations =
 <H3 id="statName"></H3>
 <video controls=""  allow="autoplay" autoplay="" name="media" id="player"><source id="source1" src="https://n3cb-e2.revma.ihrhls.com/zc6850" type="audio/aac"></video>
 
-
+<h4>Live Stations</h4>
 <ul id="stationList">
 </ul>
 
+
 </body>
 <!--
-
-<video controls="" autoplay="" name="media"><source src="https://n3cb-e2.revma.ihrhls.com/zc6137?rj-ttl=5&amp;rj-tok=AAABhJLAxHIAQxqvoUu5vJBKpw" type="audio/aac"></video>
-different URL's
-n23a-e2.revma.ihrhls.com
-n11a-e2.revma.ihrhls.com
-n0ba-e2.revma.ihrhls.com
-n32a-e2.revma.ihrhls.com
-
-<ul>
-	<li><a href="https://stream.revma.ihrhls.com/zc8143" target="bam" id="first">Breeze</a></li>
-	<li><a href="https://stream.revma.ihrhls.com/zc3949" target="bam">Pride</a></li>
-	<li><a href="https://stream.revma.ihrhls.com/zc4422" target="bam">Hits</a></li>
-	<li><a href="https://stream.revma.ihrhls.com/zc4409" target="bam">80s to Today</a></li>
-	<li><a href="https://stream.revma.ihrhls.com/zc8478" target="bam">2010's</a></li>
-	<li><a href="https://stream.revma.ihrhls.com/zc6850" target="bam">2000's</a></li>
-	<li><a href="https://stream.revma.ihrhls.com/zc6834" target="bam">90's</a></li>
-	<li><a href="https://stream.revma.ihrhls.com/zc5060" target="bam">80's</a></li>
-	<li><a href="https://stream.revma.ihrhls.com/zc6437" target="bam">90's Alternative</a></li>
-	<li><a href="https://stream.revma.ihrhls.com/zc6788" target="bam">Reggae</a></li>
-	<li><a href="https://stream.revma.ihrhls.com/zc7078" target="bam">Classic Rock</a></li>
-	<li><a href="https://stream.revma.ihrhls.com/zc6878" target="bam">Vinyl Classic Rock</a></li>
-	<li><a href="https://stream.revma.ihrhls.com/zc6377" target="bam">Classical</a></li>
-	<li><a href="https://stream.revma.ihrhls.com/zc4717" target="bam">Real Oldies</a></li>
-	<li><a href="https://stream.revma.ihrhls.com/zc4439" target="bam">Cool Oldies</a></li>
-	<li><a href="https://stream.revma.ihrhls.com/zc4242" target="bam">Jazz</a></li>
-	<li><a href="https://stream.revma.ihrhls.com/zc6221" target="bam">Beach</a></li>
-	<li><a href="https://stream.revma.ihrhls.com/zc6148" target="bam">Hawaii</a></li>
-	<li><a href="https://stream.revma.ihrhls.com/zc4719" target="bam">R&amp;B</a></li>
-	<li><a href="https://stream.revma.ihrhls.com/zc6137" target="bam">Christmas Classics</a></li>
-	<li><a href="https://stream.revma.ihrhls.com/zc4596" target="bam">Christmas Favs</a></li>
-</ul>
-
-
 http://subfm.radioca.st/Sub.FM
 http://kdhx-ice.streamguys1.com:80/live
 http://eno.emit.com:8000/2bob_live_64.mp3
