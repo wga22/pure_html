@@ -1,0 +1,70 @@
+<script>
+    var player, firstLoad = true;
+
+    function init() {
+        setInterval(function () {
+            if (player && player.isReady()) {
+                var d = new Date();
+                var seconds = d.getSeconds();
+                document.querySelector('#sec').innerHTML = (seconds < 10 ? '0' : '') + seconds;
+                var minutes = d.getMinutes();
+                document.querySelector('#min').innerHTML = (minutes < 10 ? '0' : '') + minutes + ':';
+                document.querySelector('#videoDelay').innerHTML = Math.round((d.getTime() / 1000) - Number(player.timeAsUTC()));
+                document.querySelector('#videoBuffer').innerHTML = player.getBufferLength() + 's';
+            }
+        }, 1000);
+    }
+
+    function load(button) {
+        if (!firstLoad) {
+            player.reset();
+        }
+        firstLoad = false;
+        var url = document.getElementById('manifest').value;
+        player = dashjs.MediaPlayer().create();
+        player.updateSettings({ 'debug': { 'logLevel': dashjs.Debug.LOG_LEVEL_NONE } });
+
+        switch (document.querySelector('input[name="delay"]:checked').value) {
+            case 'segments':
+                player.updateSettings({
+                    'streaming':
+                        {
+                            'delay': {
+                                'liveDelayFragmentCount': document.querySelector('#delayInFragments').value
+                            }
+
+                        }
+                });
+
+                break;
+            case 'time':
+                player.updateSettings({
+                    'streaming':
+                        {
+                            'delay': {
+                                'liveDelay': document.querySelector('#delayInSeconds').value
+                            }
+                        }
+                });
+                break;
+        }
+        player.initialize(document.querySelector('video'), url, true);
+    }
+
+    function delaySelect(obj) {
+        switch (obj.value) {
+            case 'default':
+                document.querySelector('#fragmentsEntry').style.display = 'none';
+                document.querySelector('#secondsEntry').style.display = 'none';
+                break;
+            case 'segments':
+                document.querySelector('#fragmentsEntry').style.display = 'inline';
+                document.querySelector('#secondsEntry').style.display = 'none';
+                break;
+            case 'time':
+                document.querySelector('#fragmentsEntry').style.display = 'none';
+                document.querySelector('#secondsEntry').style.display = 'inline';
+                break;
+        }
+    }
+</script>
