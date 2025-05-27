@@ -1,0 +1,214 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dynamic Monthly Attic Temperature Tables</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        h1, h2 { text-align: center; }
+        table { width: 80%; margin: 20px auto; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        th { background-color: #f2f2f2; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        .intervention { font-style: italic; color: #555; }
+        .red { color: red; }
+        .orange-dotted { color: orange; text-decoration: underline; text-decoration-style: dotted; }
+        #loading { text-align: center; font-style: italic; }
+        #error { text-align: center; color: red; }
+    </style>
+</head>
+<body>
+    <h1>Dynamic Attic Temperature Data by Month</h1>
+    <p>Each table below summarizes attic temperature data for a specific month, fetched from ThingSpeak channel 39741. Columns include:
+        <ul>
+            <li><b>Avg Attic ΔT (°F)</b>: Average difference between attic and outdoor temperature.</li>
+            <li><b>Indoor/Outdoor ΔT Change (°F)</b>: Year-over-year change in indoor/outdoor temperature difference (negative is good, shown in <span class="red">red</span>).</li>
+            <li><b>Outdoor ΔT YoY (°F)</b>: Year-over-year change in outdoor temperature (negative means cooler, shown in <span class="orange-dotted">dotted orange</span>).</li>
+            <li><b>Attic vs 70°F (°F)</b>: Average attic temperature difference from indoor baseline of 70°F.</li>
+        </ul>
+    </p>
+    <p><b>Interventions</b>:
+        <ul>
+            <li>Feb 15, 2018: Added reflection to attic (50% coverage).</li>
+            <li>Mar 15, 2019: Doubled insulation.</li>
+            <li>May 15, 2025: Added 12V 100W solar fan.</li>
+        </ul>
+    </p>
+    <div id="loading">Loading data from ThingSpeak...</div>
+    <div id="error"></div>
+    <div id="tables"></div>
+
+    <script>
+        const channelId = '39741';
+        const readApiKey = 'WE0B76XWWVYWGVH7';
+        const startYear = 2017;
+        const endYear = 2025;
+        const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                        'July', 'August', 'September', 'October', 'November', 'December'];
+
+        // Interventions
+        const interventions = {
+            '2018-02': 'Reflection added Feb 15',
+            '2019-03': 'Insulation doubled Mar 15',
+            '2025-05': 'Solar fan added May 15'
+        };
+
+        // Mock data (fallback if ThingSpeak fetch fails)
+        const mockData = {};
+        for (let year = startYear; year <= endYear; year++) {
+            mockData[year] = {};
+            months.forEach((month, index) => {
+                const monthIndex = index + 1;
+                mockData[year][monthIndex] = {
+                    avgAtticDeltaT: 15 + index * 1.5 - (year - 2017) * 0.5,
+                    indoorOutdoorDeltaTChange: year === startYear ? 0 : -(0.2 + Math.random() * 0.3),
+                    outdoorDeltaTYoY: (Math.random() - 0.5) * 0.5,
+                    atticVs70: 25 + index * 1.5 - (year - 2017) * 0.5
+                };
+            });
+        }
+
+        async function fetchThingSpeakData() {
+            try {
+                const data = {};
+                for (let year = startYear; year <= endYear; year++) {
+                    data[year] = {};
+                    for (let monthIndex = 1; monthIndex <= 12; monthIndex++) {
+                        const startDate = `${year}-${monthIndex.toString().padStart(2, '0')}-01`;
+                        const endDate = `${year}-${monthIndex.toString().padStart(2, '0')}-${monthIndex === 2 ? (year % 4 === 0 ? 29 : 28) : [4, 6, 9, 11].includes(monthIndex) ? 30 : 31}`;
+                        const url = `https://api.thingspeak.com/channels/${channelId}/feeds.json?api_key=${readApiKey}&start=${startDate}%2000:00:00&end=${endDate}%2023:59:59&average=monthly`;
+                        const response = await fetch(url);
+                        if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+                        const json = await response.json();
+
+                        if (!json.feeds || json.feeds.length === 0) {
+                            data[year][monthIndex] = { avgAtticDeltaT: 'N/A', indoorOutdoorDeltaTChange: 'N/A', outdoorDeltaTYoY: 'N/A', atticVs70: 'N/A' };
+                            continue;
+                        }
+
+                        // Assume Field1 = attic temp, Field2 = outdoor temp
+                        let atticTemps = [];
+                        let outdoorTemps = [];
+                        json.feeds.forEach(feed => {
+                            const atticTemp = parseFloat(feed.field1);
+                            const outdoorTemp = parseFloat(feed.field2);
+                            if (!isNaN(atticTemp) && !isNaN(outdoorTemp)) {
+                                atticTemps.push(atticTemp);
+                                outdoorTemps.push(outdoorTemp);
+                            }
+                        });
+
+                        if (atticTemps.length === 0) {
+                            data[year][monthIndex] = { avgAtticDeltaT: 'N/A', indoorOutdoorDeltaTChange: 'N/A', outdoorDeltaTYoY: 'N/A', atticVs70: 'N/A' };
+                            continue;
+                        }
+
+                        // Calculate averages
+                        const avgAtticTemp = atticTemps.reduce((sum, val) => sum + val, 0) / atticTemps.length;
+                        const avgOutdoorTemp = outdoorTemps.reduce((sum, val) => sum + val, 0) / outdoorTemps.length;
+                        const avgAtticDeltaT = avgAtticTemp - avgOutdoorTemp;
+                        const atticVs70 = avgAtticTemp - 70;
+
+                        // Calculate year-over-year changes (requires previous year's data)
+                        let indoorOutdoorDeltaTChange = 'N/A';
+                        let outdoorDeltaTYoY = 'N/A';
+                        if (year > startYear && data[year - 1][monthIndex] && data[year - 1][monthIndex].avgAtticDeltaT !== 'N/A') {
+                            indoorOutdoorDeltaTChange = avgAtticDeltaT - data[year - 1][monthIndex].avgAtticDeltaT;
+                            outdoorDeltaTYoY = avgOutdoorTemp - (data[year - 1][monthIndex].avgOutdoorTemp || avgOutdoorTemp);
+                        } else if (year === startYear) {
+                            indoorOutdoorDeltaTChange = 0;
+                            outdoorDeltaTYoY = 0;
+                        }
+
+                        data[year][monthIndex] = {
+                            avgAtticDeltaT,
+                            indoorOutdoorDeltaTChange,
+                            outdoorDeltaTYoY,
+                            atticVs70,
+                            avgOutdoorTemp // Store for YoY calculations
+                        };
+                    }
+                }
+                return data;
+            } catch (error) {
+                console.error('Error fetching ThingSpeak data:', error);
+                document.getElementById('error').innerText = 'Error loading data from ThingSpeak. Using mock data.';
+                return mockData;
+            }
+        }
+
+        function generateTables(data) {
+            const container = document.getElementById('tables');
+            container.innerHTML = '';
+            document.getElementById('loading').style.display = 'none';
+
+            months.forEach((month, index) => {
+                const monthIndex = index + 1;
+                let tableHTML = `<h2>${month}</h2><table><tr><th>Year</th><th>Avg Attic ΔT (°F)</th><th>Indoor/Outdoor ΔT Change (°F)</th><th>Outdoor ΔT YoY (°F)</th><th>Attic vs 70°F (°F)</th></tr>`;
+
+                for (let year = startYear; year <= endYear; year++) {
+                    const interventionKey = `${year}-${monthIndex.toString().padStart(2, '0')}`;
+                    const intervention = interventions[interventionKey] ? ` (${interventions[interventionKey]})` : '';
+                    const yearData = data[year][monthIndex] || {
+                        avgAtticDeltaT: 'N/A',
+                        indoorOutdoorDeltaTChange: 'N/A',
+                        outdoorDeltaTYoY: 'N/A',
+                        atticVs70: 'N/A'
+                    };
+                    tableHTML += `<tr>
+                        <td class="${intervention ? 'intervention' : ''}">${year}${intervention}</td>
+                        <td>${typeof yearData.avgAtticDeltaT === 'number' ? yearData.avgAtticDeltaT.toFixed(1) : yearData.avgAtticDeltaT}</td>
+                        <td class="red">${typeof yearData.indoorOutdoorDeltaTChange === 'number' ? yearData.indoorOutdoorDeltaTChange.toFixed(1) : yearData.indoorOutdoorDeltaTChange}</td>
+                        <td class="orange-dotted">${typeof yearData.outdoorDeltaTYoY === 'number' ? yearData.outdoorDeltaTYoY.toFixed(1) : yearData.outdoorDeltaTYoY}</td>
+                        <td>${typeof yearData.atticVs70 === 'number' ? yearData.atticVs70.toFixed(1) : yearData.atticVs70}</td>
+                    </tr>`;
+                }
+                tableHTML += '</table>';
+                container.innerHTML += tableHTML;
+            });
+        }
+
+        // Fetch and generate tables
+        fetchThingSpeakData().then(data => generateTables(data));
+    </script>
+</body>
+</html>
