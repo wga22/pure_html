@@ -61,9 +61,9 @@
     <p>Each table below summarizes attic temperature data for a specific month, fetched from ThingSpeak channel 39741. Columns include:
         <ul>
             <li><b>Avg Attic ΔT (°F)</b>: Average difference between attic and outdoor temperature.</li>
-            <li><b>Indoor/Outdoor ΔT Change (°F)</b>: Year-over-year change in indoor/outdoor temperature difference (negative is good, shown in <span class="red">red</span>).</li>
+            <li><b>Indoor/Outdoor ΔT Change (°F)</b>: Year-over-year change in indoor/outdoor temperature difference.  Negative is good in winter, positive good in summer. <span class="red">red</span>).</li>
             <li><b>Outdoor ΔT YoY (°F)</b>: Year-over-year change in outdoor temperature (negative means cooler, shown in <span class="orange-dotted">dotted orange</span>).</li>
-            <li><b>Attic vs 70°F (°F)</b>: Average attic temperature difference from indoor baseline of 70°F.</li>
+            <li><b>Attic vs 70°F (°F)</b>: Average attic temperature difference from indoor baseline of 70°F. Lower better in winter (less heat loss).  Higher better in Summer (less cooling loss).</li>
         </ul>
     </p>
     <p><b>Interventions</b>:
@@ -81,7 +81,7 @@
         const channelId = '39741';
         const readApiKey = 'WE0B76XWWVYWGVH7';
         const startYear = 2017;
-        const endYear = 2025;
+        const endYear = new Date().getFullYear();
         const months = ['January', 'February', 'March', 'April', 'May', 'June', 
                         'July', 'August', 'September', 'October', 'November', 'December'];
 
