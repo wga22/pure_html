@@ -1,185 +1,193 @@
-
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-	<title>will music</title>
-	<link rel="icon" href="images/iheart.png">
-	<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
-	<script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Will Music Player</title>
+    <link rel="icon" href="images/iheart.png">
+    <style>
+        body {
+            background-color: lightblue;
+            font-family: sans-serif;
+            transition: background-color 0.5s ease; /* Smooth color transition */
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
 
-const IHEART = "https://stream.revma.ihrhls.com/";
-const RADIOPARADISE = "http://stream-dc1.radioparadise.com/";
-const FIOS = "http://192.168.86.111:5004/auto/v";    //LAN only - UNUSED
+        h3 {
+            margin-top: 0;
+            background: rgba(255, 255, 255, 0.3);
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
 
-var stations = 
-[
-{type: "iheart", code:"zc8143", title:"Breeze", color:"DeepSkyBlue" },
-{type: "iheart", code:"zc3949", title:"Pride", color:"DarkOrchid" },
-{type: "iheart", code:"zc8681", title:"Yacht", color:"Aquamarine" },
-{type: "iheart", code:"zc4422", title:"Hits", color:"yellow" },
-{type: "iheart", code:"zc4409", title:"80s to Today", color:"LawnGreen" },
-{type: "iheart", code:"zc8478", title:"2010's", color:"#698B69" },
-{type: "iheart", code:"zc6850", title:"2000's", color:"#8B5A00" },
-{type: "iheart", code:"zc6834", title:"90's", color:"Gainsboro" },
-{type: "iheart", code:"zc5060", title:"80's", color:"#FFC125" },
-{type: "iheart", code:"zc6437", title:"90's Alternative", color:"#D1EEEE" },
-{type: "iheart", code:"zc6788", title:"Reggae", color:"#1E90FF" },
-{type: "iheart", code:"zc7078", title:"Classic Rock", color:"#97FFFF" },
-{type: "iheart", code:"zc6878", title:"Vinyl Classic Rock", color:"#F5F5DC" },
-{type: "iheart", code:"zc8626", title:"The Brew - new Classic Rock", color:"#F5F5DC" },
-{type: "iheart", code:"zc6951", title:"Cafe - Mellow Classic Rock", color:"#aaFF89" },
-{type: "iheart", code:"zc6377", title:"Classical", color:"#B0C4DE" },
-{type: "iheart", code:"zc4717", title:"Real Oldies", color:"#8B795E" },
-{type: "iheart", code:"zc4439", title:"Cool Oldies", color:"#FF1493" },
-{type: "iheart", code:"zc4242", title:"Jazz", color:"#EED5D2" },
-{type: "iheart", code:"zc6221", title:"Beach", color:"#7FFFD4" },
-{type: "iheart", code:"zc6148", title:"Hawaii", color:"OliveDrab" },
-{type: "iheart", code:"zc4719", title:"R&amp;B", color:"lavender" },
-{type: "iheart", code:"zc6137", title:"Christmas Classics", color:"#00FA9A" },
-{type: "iheart", code:"zc4596", title:"Christmas Favs", color:"#FF3030" },
-{type:"rp", code:"mellow-flac", title:"Radio Paradise-Mellow", color:"#223030" },
-{type:"rp", code:"flac", title:"Radio Paradise-Main", color:"#222230" },
-{type:"fios", code:"1818", title:"FIOS Soft Rock", color:"#222230" }
+        /* Modern Audio Player Styling */
+        audio {
+            width: 100%;
+            margin-bottom: 20px;
+            border-radius: 30px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
 
-];		
+        h4 {
+            border-bottom: 2px solid rgba(0,0,0,0.1);
+            padding-bottom: 5px;
+        }
 
-	function changeStation(sURL, xStation)
-    {
-        xStation = xStation ? xStation : 0;
-        document.body.style.backgroundColor=stations[xStation].color;
-        document.all.statName.innerHTML = stations[xStation].title;
-        document.all.source1.src = sURL;
-        document.all.player.load();
-        //setTimeout(startPlayingWait, 2000);
-        document.all.player.play()
-        //TODO: get the iframe to start playing
-        //document.all.bam.play();
-        //document.all.bam.onload = startPlaying;
-    }
-    
-    function startPlayingWait()
-    {
-       //alert("start playing")
-       //document.all.bam.
-       document.all.player.play();
-    }
-    
-	function main()
-	{
-		for(var x=0; x < stations.length; x++)
-		{
-			var sURL = "";
-            if("rp" ===stations[x].type)
-            {
-                sURL = RADIOPARADISE + stations[x].code;
-            }
-            else if("iheart" ===stations[x].type)//type will be iheart
-            {
-                sURL = IHEART + stations[x].code;
-            }
-            else if("fios" ===stations[x].type)//type will be iheart
-            {
-               //BROKEN for now sURL = FIOS + stations[x].code;
-               continue;    //dont write out this row
-            }
-            /* TODO - figure out autoplay 
-            // NOT NEEDED WHEN we just use the default URL in the source1
-            if(x==0)
-            {
-                //changeStation(sURL, 0);
-            }
-            */
-			$('#stationList').append('<li><a href="#" onclick=\"changeStation(\''+sURL+'\','+x+')\">' + stations[x].title+'</li>');   
-		}
-        //changeStation2(0);
-	}
-		
-	
-		
-		
-	</script>
+        /* Station List Styling */
+        #stationList {
+            list-style-type: none;
+            padding: 0;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); /* Responsive Grid */
+            gap: 10px;
+        }
+
+        #stationList li {
+            margin: 0;
+        }
+
+        #stationList button {
+            width: 100%;
+            padding: 12px;
+            background-color: rgba(255, 255, 255, 0.6);
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            text-align: left;
+            transition: transform 0.1s, background-color 0.2s;
+        }
+
+        #stationList button:hover {
+            background-color: rgba(255, 255, 255, 0.9);
+            transform: scale(1.02);
+            font-weight: bold;
+        }
+
+        #stationList button:active {
+            transform: scale(0.98);
+        }
+    </style>
 </head>
-<body style="background-color:lightblue; a{cursor: pointer; }" onload="main()">
-<H3 id="statName"></H3>
-<video controls=""  allow="autoplay" autoplay="" name="media" id="player"><source id="source1" src="https://n3cb-e2.revma.ihrhls.com/zc6850" type="audio/aac"></video>
+<body>
 
-<h4>Live Stations</h4>
-<ul id="stationList">
-</ul>
+    <h3 id="statName">Select a Station</h3>
+    
+    <audio id="player" controls autoplay>
+        Your browser does not support the audio element.
+    </audio>
 
+    <h4>Live Stations</h4>
+    <ul id="stationList"></ul>
 
+    <script>
+        // Use HTTPS where possible to prevent Mixed Content warnings
+        const IHEART_BASE = "https://stream.revma.ihrhls.com/";
+        const RP_BASE = "https://stream-dc1.radioparadise.com/"; 
+
+        // Consolidated Station List
+        // Added a new "direct" type for the URLs you had in comments
+        const stations = [
+            // --- iHeart Stations ---
+            {type: "iheart", code:"zc8143", title:"Breeze", color:"DeepSkyBlue" },
+            {type: "iheart", code:"zc8681", title:"Yacht", color:"Aquamarine" },
+            {type: "iheart", code:"zc4439", title:"Cool Oldies", color:"#FF1493" },
+            {type: "iheart", code:"zc7078", title:"Classic Rock", color:"#97FFFF" },
+            {type: "iheart", code:"zc6878", title:"Vinyl Classic Rock", color:"#F5F5DC" },
+            {type: "iheart", code:"zc4409", title:"80s to Today", color:"LawnGreen" },
+            {type: "iheart", code:"zc4422", title:"Hits", color:"yellow" },
+            {type: "iheart", code:"zc8478", title:"2010's", color:"#698B69" },
+            {type: "iheart", code:"zc6850", title:"2000's", color:"#8B5A00" },
+            {type: "iheart", code:"zc6834", title:"90's", color:"Gainsboro" },
+            {type: "iheart", code:"zc6437", title:"90's Alternative", color:"#D1EEEE" },
+            {type: "iheart", code:"zc5060", title:"80's", color:"#FFC125" },
+            {type: "iheart", code:"zc6410", title:"Rock", color:"#FF90FF" },
+            {type: "iheart", code:"zc6788", title:"Reggae", color:"#1E90FF" },
+            {type: "iheart", code:"zc4717", title:"Real Oldies", color:"#8B795E" },
+            {type: "iheart", code:"zc4719", title:"R&B", color:"lavender" },
+            {type: "iheart", code:"zc6221", title:"Beach", color:"#7FFFD4" },
+            {type: "iheart", code:"zc8626", title:"The Brew", color:"#F5F5DC" },
+            {type: "iheart", code:"zc6951", title:"Cafe Rock", color:"#aaFF89" },
+            {type: "iheart", code:"zc4242", title:"Jazz", color:"#EED5D2" },
+            {type: "iheart", code:"zc6377", title:"Classical", color:"#B0C4DE" },
+            {type: "iheart", code:"zc6148", title:"Hawaii", color:"OliveDrab" },
+            {type: "iheart", code:"zc6137", title:"Christmas Classics", color:"#00FA9A" },
+            {type: "iheart", code:"zc4596", title:"Christmas Favs", color:"#FF3030" },
+            {type: "iheart", code:"zc3949", title:"Pride", color:"DarkOrchid" },
+            
+            // --- Radio Paradise ---
+            {type: "rp", code:"mellow-flac", title:"Radio Paradise - Mellow", color:"#223030" },
+            {type: "rp", code:"flac", title:"Radio Paradise - Main", color:"#222230" },
+
+            // --- Direct Links (Recovered from Comments) ---
+            // Added default colors for these since none were specified
+            {type: "direct", url: "http://ice1.somafm.com/groovesalad-128-aac", title: "SomaFM Groove Salad", color: "#98FB98"},
+            {type: "direct", url: "http://ice1.somafm.com/deepspaceone-128-aac", title: "SomaFM Deep Space One", color: "#191970"},
+            {type: "direct", url: "http://ice1.somafm.com/secretagent-128-aac", title: "SomaFM Secret Agent", color: "#A9A9A9"},
+            {type: "direct", url: "http://ice1.somafm.com/indiepop-128-aac", title: "SomaFM Indie Pop", color: "#FF69B4"},
+            {type: "direct", url: "http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one", title: "BBC Radio 1", color: "#000000"},
+            {type: "direct", url: "http://direct.fipradio.fr/live/fip-midfi.mp3", title: "FIP Radio", color: "#FF1493"},
+            {type: "direct", url: "https://ice.cr1.streamzilla.xlcdn.com:8000/sz=RCOLiveWebradio=mp3-192", title: "RCO Live", color: "#87CEFA"},
+            {type: "direct", url: "http://wdcb-ice.streamguys.org:80/wdcb128", title: "WDCB Jazz", color: "#DAA520"},
+            {type: "direct", url: "https://www.wwoz.org/listen/hi", title: "WWOZ New Orleans", color: "#8B4513"}
+        ];
+
+        function changeStation(index) {
+            const station = stations[index];
+            let sURL = "";
+
+            // Determine URL based on type
+            if (station.type === "rp") {
+                sURL = RP_BASE + station.code;
+            } else if (station.type === "iheart") {
+                sURL = IHEART_BASE + station.code;
+            } else if (station.type === "direct") {
+                sURL = station.url;
+            }
+
+            // Update UI
+            document.body.style.backgroundColor = station.color || "lightblue";
+            document.getElementById('statName').textContent = station.title;
+            document.title = "Now Playing: " + station.title; // Updates browser tab
+            
+            // Update Player
+            const player = document.getElementById('player');
+            player.src = sURL;
+            player.load();
+            
+            // Attempt to play (browser may block if no interaction occurred yet)
+            const playPromise = player.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                    console.log("Auto-play prevented until user interaction.");
+                });
+            }
+        }
+
+        function init() {
+            const list = document.getElementById('stationList');
+
+            stations.forEach((station, index) => {
+                const item = document.createElement('li');
+                const btn = document.createElement('button');
+                
+                btn.textContent = station.title;
+                
+                // Add click handler
+                btn.onclick = function() {
+                    changeStation(index);
+                };
+
+                item.appendChild(btn);
+                list.appendChild(item);
+            });
+        }
+
+        // Run init when DOM is ready
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
 </body>
-<!--
-http://subfm.radioca.st/Sub.FM
-http://kdhx-ice.streamguys1.com:80/live
-http://eno.emit.com:8000/2bob_live_64.mp3
-https://bytefm.cast.addradio.de/bytefm/main/high/stream
-http://west-aac-64.streamthejazzgroove.com/stream
-http://listen.jazz88.org/ksds.mp3
-http://live.wostreaming.net/direct/ppm-jazz24aac256-ibc1
-http://ice5.securenetsystems.net/KCSM
-http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one
-http://direct.fipradio.fr/live/fip-midfi.mp3
-http://icecast6.play.cz/croddur-256.mp3
-http://stream.wqxr.org/wqxr
-https://ice.cr1.streamzilla.xlcdn.com:8000/sz=RCOLiveWebradio=mp3-192
-http://wdcb-ice.streamguys.org:80/wdcb128
-https://www.wwoz.org/listen/hi
-http://stream-relay-geo.ntslive.net/stream
-http://ice1.somafm.com/beatblender-128-aac
-http://ice1.somafm.com/brfm-128-aac
-http://ice1.somafm.com/bootliquor-128-aac
-http://ice1.somafm.com/cliqhop-128-aac
-http://ice1.somafm.com/covers-128-mp3
-http://ice1.somafm.com/deepspaceone-128-aac
-http://ice1.somafm.com/defcon-128-aac
-http://ice1.somafm.com/digitalis-128-aac
-http://ice1.somafm.com/dronezone-128-aac
-http://ice1.somafm.com/dubstep-128-aac
-http://ice1.somafm.com/fluid-128-aac
-http://ice1.somafm.com/folkfwd-128-aac
-http://ice2.somafm.com/gsclassic-128-aac
-http://ice1.somafm.com/groovesalad-128-aac
-http://ice4.somafm.com/reggae-128-aac
-http://ice1.somafm.com/illstreet-128-aac
-http://ice1.somafm.com/indiepop-128-aac
-http://ice1.somafm.com/seventies-128-aac
-http://ice1.somafm.com/live-128-aac
-http://ice1.somafm.com/lush-128-aac
-http://ice1.somafm.com/metal-128-aac
-http://ice1.somafm.com/missioncontrol-128-aac
-https://ice6.somafm.com/n5md-128-aac
-http://ice1.somafm.com/poptron-128-aac
-http://ice1.somafm.com/secretagent-128-aac
-http://ice1.somafm.com/7soul-128-aac
-http://ice1.somafm.com/sf1033-128-aac
-http://ice1.somafm.com/sonicuniverse-128-aac
-http://ice1.somafm.com/spacestation-128-aac
-http://ice1.somafm.com/suburbsofgoa-128-aac
-https://ice6.somafm.com/synphaera-128-aac
-http://ice1.somafm.com/thetrip-128-aac
-http://ice1.somafm.com/thistle-128-aac
-http://ice1.somafm.com/u80s-128-aac
-https://ice1.somafm.com/vaporwaves-128-aac
-https://tunein.com/radio/Radio-Paradise-Mellow-Mix-s308828/
-http://stream.radioparadise.com/mellow-flac
-http://stream.radioparadise.com/mellow-aac128
-http://stream-dc1.radioparadise.com/
-https://stream.revma.ihrhls.com/zc8478
-https://stream.revma.ihrhls.com/zc8143
-https://stream.revma.ihrhls.com/zc3949
-https://stream.revma.ihrhls.com/zc4422 
-https://stream.revma.ihrhls.com/zc4409
-https://stream.revma.ihrhls.com/zc6850
-https://stream.revma.ihrhls.com/zc5060 
-https://stream.revma.ihrhls.com/zc6788
-https://stream.revma.ihrhls.com/zc6834
-https://stream.revma.ihrhls.com/zc4439
-https://stream.revma.ihrhls.com/zc6878
-https://stream.revma.ihrhls.com/zc6437
-https://stream.revma.ihrhls.com/zc7078
-https://stream.revma.ihrhls.com/zc4719
-https://stream.revma.ihrhls.com/zc6221
-
-
--->
 </html>
