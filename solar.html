@@ -144,6 +144,7 @@ function gatherData()
 					{
 						oDailyData[sYMD][q] = 0;
 					}
+					oDailyData[sYMD]['BATT_VOLT_min'] = 99;
 				}
 				for(var q in oFields)
 				{
@@ -177,7 +178,12 @@ function gatherData()
                                     oLatestData.PANEL_VOLT = cleanUpValue(val/10, 4000,100);
                                 }
                             }
-                            oDailyData[sYMD][q] = Math.max(oDailyData[sYMD][q], cleanUpValue(val/10, 4000,100));
+                            var cleaned = cleanUpValue(val/10, 4000,100);
+                            oDailyData[sYMD][q] = Math.max(oDailyData[sYMD][q], cleaned);
+                            if("BATT_VOLT" == q )
+                            {
+                                oDailyData[sYMD]['BATT_VOLT_min'] = Math.min(oDailyData[sYMD]['BATT_VOLT_min'], cleaned);
+                            }
 						}
 						else if("BATT_CURR" == q || "CURRENT_LOAD"==q)
 						{
@@ -206,7 +212,7 @@ function gatherData()
 				}
 
 				/*
-				//Off 0  / Low power 1 • (load search) / Fault 2 / Bulk 3  / Absorption 4  / Float 5
+				//Off 0  / Low power 1 â€¢ (load search) / Fault 2 / Bulk 3  / Absorption 4  / Float 5
 				if(nChargeState>0)
 				{
 					$('#chargestate').append("<li>"+time.toLocaleString() + "   V:" +nBatteryVoltage + " I:" + nBatteryCurrent + " " + writeChargeState(nChargeState)
@@ -248,7 +254,7 @@ function cleanUpValue(nValue, nMAX, nDivisor)
 
 function writeChargeState(nChargeState)
 {
-//Off 0  / Low power 1 • (load search) / Fault 2 / Bulk 3  / Absorption 4  / Float 5
+//Off 0  / Low power 1 â€¢ (load search) / Fault 2 / Bulk 3  / Absorption 4  / Float 5
 	var aVals = ["Off", "low", "fault", "bulk", "absorption", "float"];
 	return ((nChargeState>-1 && nChargeState<aVals.length)? aVals[nChargeState] : "UNK")
 
@@ -293,13 +299,34 @@ function panelVoltClean(nVolts)
 function writeTheValues(oVals, sTable)
 {
 	//compute the averages for each month, and write it to a dataset for output to a table.
+	var aDates = Object.keys(oVals).sort((a, b) => new Date(a) - new Date(b));
+	var oPriorUsed = {};
+	for (var i = 1; i < aDates.length; i++) {
+		var curr = aDates[i];
+		var prev = aDates[i - 1];
+		var dC = new Date(curr);
+		var dP = new Date(prev);
+		if (dC.getTime() - dP.getTime() === 86400000) {
+			var prevMax = oVals[prev]["BATT_VOLT"];
+			var currMin = oVals[curr]["BATT_VOLT_min"];
+			var used = getSOC(prevMax) - getSOC(currMin);
+			oPriorUsed[curr] = used > 0 ? used : 0;
+		} else {
+			oPriorUsed[curr] = "N/A";
+		}
+	}
 	var aDeltasPerDay = [];
-	for (var x in oVals)
+	for(var x in oVals)
 	{
 		//$('#debug').append("<li>loading month: "+x+"</li>");
 
 		var od = oVals[x];
-		aDeltasPerDay.push([x, od["BATT_VOLT"], od["PANEL_VOLT"],Math.max(od["BATT_CURR"],od["CURRENT_LOAD"]),od["YIELD"],od["MAX_POWER"],od["CHARGE_STATE"]]);
+		var priorUsedVal = oPriorUsed[x];
+		var priorUsedDisplay = (typeof priorUsedVal === "number") ? priorUsedVal + "%" : "N/A";
+		aDeltasPerDay.push([x, od["BATT_VOLT"], od["PANEL_VOLT"],Math.max(od["BATT_CURR"],
+        od["CURRENT_LOAD"]),od["YIELD"],od["MAX_POWER"]
+        //,od["CHARGE_STATE"]
+        ,priorUsedDisplay]);
 	}
 	//drawTheChartOfDiffs(aDeltasPerDay);
 	//write out the table
@@ -311,10 +338,11 @@ function writeTheValues(oVals, sTable)
 			{ title: "Date" },
 			{ title: oFields["BATT_VOLT"].label },
 			{ title: oFields["PANEL_VOLT"].label },
-			{ title: "Max Batt/Load Current (A)" },
+			{ title: "Max Current(A)" },
 			{ title: oFields["YIELD"].label },
 			{ title: oFields["MAX_POWER"].label },
-			{ title: "Count of Charging" }
+			//{ title: "Count of Charging" },
+			{ title: "% Used" }
 		]
     } );
 }
@@ -325,9 +353,14 @@ function writeTheValues(oVals, sTable)
  }
  
  //return % remaining on LIFEPO4 battery
+ function getSOC(nBatt)
+ {
+    return Math.max(0,Math.min(Math.round(10*(nBatt-12.7718)/0.0690476),100));
+ }
+ 
  function percBattPower(nBatt)
  {
-    return Math.max(0,Math.min(Math.round(10*(nBatt-12.7718)/0.0690476),100)) + "%"
+    return getSOC(nBatt) + "%"
     //const aVals = [12.80, 12.90, 13.00, 13.10, 13.14, 13.17, 13.20, 13.25, 13.30, 13.40]
  }
 
