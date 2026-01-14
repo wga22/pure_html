@@ -9,10 +9,11 @@
         body {
             background-color: lightblue;
             font-family: sans-serif;
-            transition: background-color 0.5s ease; /* Smooth color transition */
+            transition: background-color 0.5s ease;
             padding: 20px;
             max-width: 800px;
             margin: 0 auto;
+            padding-bottom: 100px; /* Space for scrolling */
         }
 
         h3 {
@@ -23,7 +24,6 @@
             text-align: center;
         }
 
-        /* Modern Audio Player Styling */
         audio {
             width: 100%;
             margin-bottom: 20px;
@@ -36,12 +36,11 @@
             padding-bottom: 5px;
         }
 
-        /* Station List Styling */
         #stationList {
             list-style-type: none;
             padding: 0;
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); /* Responsive Grid */
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
             gap: 10px;
         }
 
@@ -67,8 +66,10 @@
             font-weight: bold;
         }
 
-        #stationList button:active {
-            transform: scale(0.98);
+        #stationList button.active {
+            background-color: white;
+            border: 2px solid #333;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -84,14 +85,12 @@
     <ul id="stationList"></ul>
 
     <script>
-        // Use HTTPS where possible to prevent Mixed Content warnings
         const IHEART_BASE = "https://stream.revma.ihrhls.com/";
         const RP_BASE = "https://stream-dc1.radioparadise.com/"; 
 
-        // Consolidated Station List
-        // Added a new "direct" type for the URLs you had in comments
+        let currentIndex = -1; // Track which station is active
+
         const stations = [
-            // --- iHeart Stations ---
             {type: "iheart", code:"zc8143", title:"Breeze", color:"DeepSkyBlue" },
             {type: "iheart", code:"zc8681", title:"Yacht", color:"Aquamarine" },
             {type: "iheart", code:"zc4439", title:"Cool Oldies", color:"#FF1493" },
@@ -117,13 +116,8 @@
             {type: "iheart", code:"zc6137", title:"Christmas Classics", color:"#00FA9A" },
             {type: "iheart", code:"zc4596", title:"Christmas Favs", color:"#FF3030" },
             {type: "iheart", code:"zc3949", title:"Pride", color:"DarkOrchid" },
-            
-            // --- Radio Paradise ---
             {type: "rp", code:"mellow-flac", title:"Radio Paradise - Mellow", color:"#223030" },
             {type: "rp", code:"flac", title:"Radio Paradise - Main", color:"#222230" },
-
-            // --- Direct Links (Recovered from Comments) ---
-            // Added default colors for these since none were specified
             {type: "direct", url: "http://ice1.somafm.com/groovesalad-128-aac", title: "SomaFM Groove Salad", color: "#98FB98"},
             {type: "direct", url: "http://ice1.somafm.com/deepspaceone-128-aac", title: "SomaFM Deep Space One", color: "#191970"},
             {type: "direct", url: "http://ice1.somafm.com/secretagent-128-aac", title: "SomaFM Secret Agent", color: "#A9A9A9"},
@@ -136,10 +130,14 @@
         ];
 
         function changeStation(index) {
+            // Validate index bounds
+            if (index < 0) index = stations.length - 1;
+            if (index >= stations.length) index = 0;
+            
+            currentIndex = index;
             const station = stations[index];
             let sURL = "";
 
-            // Determine URL based on type
             if (station.type === "rp") {
                 sURL = RP_BASE + station.code;
             } else if (station.type === "iheart") {
@@ -148,22 +146,46 @@
                 sURL = station.url;
             }
 
-            // Update UI
+            // Visual Updates
             document.body.style.backgroundColor = station.color || "lightblue";
             document.getElementById('statName').textContent = station.title;
-            document.title = "Now Playing: " + station.title; // Updates browser tab
+            document.title = station.title; 
             
-            // Update Player
+            // Highlight active button
+            document.querySelectorAll('#stationList button').forEach((btn, idx) => {
+                if(idx === index) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+
+            // Player Updates
             const player = document.getElementById('player');
             player.src = sURL;
             player.load();
             
-            // Attempt to play (browser may block if no interaction occurred yet)
-            const playPromise = player.play();
-            if (playPromise !== undefined) {
-                playPromise.catch(error => {
-                    console.log("Auto-play prevented until user interaction.");
+            player.play().catch(e => console.log("Auto-play blocked:", e));
+
+            // Update Media Session (Lock Screen Info)
+            updateMediaSession(station);
+        }
+
+        function updateMediaSession(station) {
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: station.title,
+                    artist: "Will's Radio",
+                    album: "Live Stream",
+                    artwork: [
+                        { src: 'images/iheart.png', sizes: '96x96', type: 'image/png' },
+                        { src: 'images/iheart.png', sizes: '128x128', type: 'image/png' },
+                        { src: 'images/iheart.png', sizes: '512x512', type: 'image/png' }
+                    ]
                 });
+
+                // Assign handlers for Bluetooth/Hardware keys
+                navigator.mediaSession.setActionHandler('play', () => document.getElementById('player').play());
+                navigator.mediaSession.setActionHandler('pause', () => document.getElementById('player').pause());
+                navigator.mediaSession.setActionHandler('previoustrack', () => changeStation(currentIndex - 1));
+                navigator.mediaSession.setActionHandler('nexttrack', () => changeStation(currentIndex + 1));
             }
         }
 
@@ -173,20 +195,13 @@
             stations.forEach((station, index) => {
                 const item = document.createElement('li');
                 const btn = document.createElement('button');
-                
                 btn.textContent = station.title;
-                
-                // Add click handler
-                btn.onclick = function() {
-                    changeStation(index);
-                };
-
+                btn.onclick = () => changeStation(index);
                 item.appendChild(btn);
                 list.appendChild(item);
             });
         }
 
-        // Run init when DOM is ready
         window.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
