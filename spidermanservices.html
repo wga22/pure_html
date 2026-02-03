@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spiderman Services</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            padding: 40px;
+        }
+        table {
+            background: white;
+            border-collapse: collapse;
+            width: 80%;
+            max-width: 900px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        th, td {
+            text-align: left;
+            padding: 16px;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background-color: #2c3e50;
+            color: white;
+            text-transform: uppercase;
+            font-size: 14px;
+            letter-spacing: 1px;
+        }
+        tr:hover {
+            background-color: #f9f9f9;
+        }
+        .icon-cell {
+            width: 60px;
+            text-align: center;
+        }
+        .icon-cell img {
+            width: 32px;
+            height: 32px;
+            vertical-align: middle;
+        }
+        a {
+            color: #3498db;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .description {
+            color: #555;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+
+<table>
+    <thead>
+        <tr>
+            <th class="icon-cell">Icon</th>
+            <th>Service Name</th>
+            <th>Description</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td class="icon-cell"><img src="https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/netalertx.png" alt="NetAlertX"></td>
+            <td><a href="http://spiderman.lan:3010/devices.php" target="_blank">NetAlertX</a></td>
+            <td class="description">A network security scanner that monitors devices, detects intruders, and provides centralized network visibility across your LAN.</td>
+        </tr>
+        <tr>
+            <td class="icon-cell"><img src="https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/pi-hole.png" alt="Pi-hole"></td>
+            <td><a href="http://spiderman.lan:3005/admin/" target="_blank">Pi-hole</a></td>
+            <td class="description">A network-wide DNS sinkhole that blocks advertisements and trackers for all devices on your network without needing client-side software.</td>
+        </tr>
+        <tr>
+            <td class="icon-cell"><img src="https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/uptime-kuma.png" alt="Uptime Kuma"></td>
+            <td><a href="http://spiderman.lan:3001/" target="_blank">Uptime Kuma</a></td>
+            <td class="description">A self-hosted monitoring tool that tracks the availability and performance of your websites and services with a fancy, reactive UI.</td>
+        </tr>
+        <tr>
+            <td class="icon-cell"><img src="https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/cups.png" alt="CUPS"></td>
+            <td><a href="http://spiderman.local:631" target="_blank">CUPS</a></td>
+            <td class="description">The standards-based, open source printing system that allows your server to act as a print host for your network.</td>
+        </tr>        
+    </tbody>
+</table>
+
+</body>
+</html>
