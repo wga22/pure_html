@@ -87,14 +87,12 @@ function getHeroTemp()
     return $temp;
 }
 
-
 function tryBackupSite()
 {
     //<span id="currentTemperature">16<sup>o</sup>C </span></p>
     $dom = new DomDocument(); 
     $dom->loadHTML(getSite('https://goweatherforecast.com/current?lat=38.8978&lng=-77.2885&search=&ts=1'));   
     $xpath = new DOMXpath($dom);
-//BROKEN print_r($xpath . "zzzzz<p>");
     $currentTemp=parseToArray($xpath,'currentTemperature');
     $temp = -100;
     if(!is_null($currentTemp) && count($currentTemp)>0)
