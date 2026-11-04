@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#edf3f1">
+  <title>Balcony Solar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #19332f;
+      --muted: #647773;
+      --line: #d7e2de;
+      --paper: #edf3f1;
+      --white: #fbfdfc;
+      --green: #236657;
+      --green-light: #d9eae4;
+      --orange: #d9653b;
+      --orange-light: #fae7dc;
+      --blue: #477986;
+      --shadow: 0 12px 32px rgb(25 51 47 / 6%);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      background:
+        radial-gradient(ellipse at 92% 0%, rgb(71 121 134 / 10%), transparent 29rem),
+        var(--paper);
+      color: var(--ink);
+      font-family: "DM Sans", "Segoe UI", sans-serif;
+    }
+    main { width: min(1120px, calc(100% - 40px)); margin: 0 auto; padding: 48px 0 56px; }
+    header { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 30px; }
+    .eyebrow { margin: 0 0 8px; color: var(--green); font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(30px, 5vw, 46px); line-height: 1.05; letter-spacing: 0; }
+    .subhead { margin: 10px 0 0; color: var(--muted); font-size: 14px; }
+    .actions { display: flex; align-items: center; gap: 14px; }
+    .channel-link { color: var(--green); font-size: 13px; font-weight: 600; text-decoration-thickness: 1px; text-underline-offset: 3px; white-space: nowrap; }
+    button { border: 0; border-radius: 6px; background: var(--ink); color: white; padding: 10px 14px; font: 600 13px "DM Sans", sans-serif; cursor: pointer; }
+    button:hover { background: var(--green); }
+    button:disabled { cursor: wait; opacity: .65; }
+    .status { display: flex; align-items: center; gap: 9px; min-height: 44px; margin-bottom: 18px; color: var(--muted); font-size: 13px; }
+    .status::before { width: 8px; height: 8px; flex: 0 0 8px; border-radius: 50%; background: #d3a64a; content: ""; }
+    .status.ready::before { background: #389270; }
+    .status.error { color: #a53d2f; }
+    .status.error::before { background: #cf5745; }
+    .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+    .metric { min-height: 174px; padding: 21px; border: 1px solid var(--line); border-radius: 8px; background: var(--white); box-shadow: var(--shadow); }
+    .metric.wide { grid-column: span 2; }
+    .metric.earnings { border-color: #e6c6b5; background: linear-gradient(145deg, #fffaf7, var(--orange-light)); }
+    .label { margin: 0; color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .value { display: block; margin-top: 20px; font-size: clamp(27px, 3.2vw, 38px); font-weight: 600; line-height: 1.05; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+    .unit { margin-left: 5px; color: var(--muted); font-size: 14px; font-weight: 500; }
+    .detail { margin: 10px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .mono { font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; }
+    .peak-time { color: var(--ink); }
+    footer { display: flex; justify-content: space-between; gap: 12px; margin-top: 20px; color: var(--muted); font-size: 12px; }
+    @media (max-width: 760px) {
+      main { width: min(100% - 28px, 600px); padding-top: 30px; }
+      header { align-items: flex-start; flex-direction: column; }
+      .actions { width: 100%; justify-content: space-between; }
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+      .metric { min-height: 154px; padding: 17px; }
+      .metric.wide { grid-column: span 2; }
+      footer { flex-direction: column; }
+    }
+    @media (max-width: 380px) {
+      .grid { grid-template-columns: 1fr; }
+      .metric.wide { grid-column: auto; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <p class="eyebrow">Energy production</p>
+        <h1>Balcony solar</h1>
+        <p class="subhead">Inverter performance and estimated value</p>
+      </div>
+      <div class="actions">
+        <a class="channel-link" href="https://thingspeak.mathworks.com/channels/3544921" target="_blank" rel="noopener">ThingSpeak channel ↗</a>
+        <button id="refresh" type="button">Refresh</button>
+      </div>
+    </header>
+
+    <div id="status" class="status" role="status" aria-live="polite">Loading inverter history…</div>
+
+    <section class="grid" aria-label="Balcony solar production summary">
+      <article class="metric">
+        <p class="label">Past 20 days</p>
+        <strong class="value" id="twenty-days">—<span class="unit">kWh</span></strong>
+        <p class="detail">Interval energy reported in the last 20 days</p>
+      </article>
+      <article class="metric wide">
+        <p class="label">Past 12 months</p>
+        <strong class="value" id="twelve-months">—</strong>
+        <p class="detail" id="twelve-months-kwh">Loading interval total…</p>
+      </article>
+      <article class="metric">
+        <p class="label">Entire history</p>
+        <strong class="value" id="lifetime">—<span class="unit">kWh</span></strong>
+        <p class="detail" id="lifetime-wh">Cumulative inverter reading: — Wh</p>
+      </article>
+      <article class="metric">
+        <p class="label">Highest power</p>
+        <strong class="value" id="peak-power">—<span class="unit">W</span></strong>
+        <p class="detail peak-time" id="peak-time">Recorded at —</p>
+      </article>
+      <article class="metric">
+        <p class="label">Days online</p>
+        <strong class="value" id="online-days">—<span class="unit">days</span></strong>
+        <p class="detail">Distinct days with active inverter reports</p>
+      </article>
+      <article class="metric earnings">
+        <p class="label">Estimated earnings</p>
+        <strong class="value" id="earnings">—</strong>
+        <p class="detail">Lifetime production at $0.20 per kWh</p>
+      </article>
+    </section>
+
+    <footer>
+      <span>Energy values use ThingSpeak fields 6 and 7 (Wh).</span>
+      <span id="updated">Updated —</span>
+    </footer>
+  </main>
+
+  <script>
+    const CHANNEL_ID = 3544921;
+    const PAGE_SIZE = 8000;
+    const THINGSPEAK_URL = `https://api.thingspeak.com/channels/${CHANNEL_ID}/feeds.json`;
+    const numberFormat = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
+    const preciseFormat = new Intl.NumberFormat(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+    const dateFormat = new Intl.DateTimeFormat(undefined, {
+      year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short"
+    });
+
+    function setStatus(message, state) {
+      const status = document.getElementById("status");
+      status.textContent = message;
+      status.className = `status${state ? ` ${state}` : ""}`;
+    }
+
+    function formatWhAsKwh(wh) {
+      return `${preciseFormat.format(wh / 1000)} kWh`;
+    }
+
+    async function fetchAllFeeds() {
+      const feeds = [];
+      let end;
+      while (true) {
+        const params = new URLSearchParams({ results: String(PAGE_SIZE) });
+        if (end) params.set("end", end);
+        const response = await fetch(`${THINGSPEAK_URL}?${params}`, { cache: "no-store" });
+        if (!response.ok) throw new Error(`ThingSpeak returned HTTP ${response.status}`);
+        const data = await response.json();
+        const page = Array.isArray(data.feeds) ? data.feeds : [];
+        feeds.unshift(...page);
+        if (page.length < PAGE_SIZE) break;
+
+        const oldestTime = Date.parse(page[0].created_at);
+        if (!Number.isFinite(oldestTime)) throw new Error("ThingSpeak returned an invalid timestamp.");
+        end = new Date(oldestTime - 1000).toISOString().replace("T", " ").replace(/\.\d{3}Z$/, "");
+      }
+      return feeds;
+    }
+
+    function render(feeds) {
+      if (!feeds.length) throw new Error("No inverter readings were found in this channel.");
+      feeds.sort((left, right) => Date.parse(left.created_at) - Date.parse(right.created_at));
+      const now = Date.now();
+      const twentyDayCutoff = now - 20 * 24 * 60 * 60 * 1000;
+      const twelveMonthDate = new Date(now);
+      twelveMonthDate.setFullYear(twelveMonthDate.getFullYear() - 1);
+      const twelveMonthCutoff = twelveMonthDate.getTime();
+      const latest = feeds[feeds.length - 1];
+      const lifetimeWh = Number(latest.field7) || 0;
+      const twentyDayWh = feeds.reduce((total, feed) => {
+        const time = Date.parse(feed.created_at);
+        return time >= twentyDayCutoff && time <= now ? total + (Number(feed.field6) || 0) : total;
+      }, 0);
+      const twelveMonthWh = feeds.reduce((total, feed) => {
+        const time = Date.parse(feed.created_at);
+        return time >= twelveMonthCutoff && time <= now ? total + (Number(feed.field6) || 0) : total;
+      }, 0);
+      const peak = feeds.reduce((highest, feed) => {
+        const watts = Number(feed.field4);
+        return Number.isFinite(watts) && (!highest || watts > Number(highest.field4)) ? feed : highest;
+      }, null);
+      const onlineDates = new Set(feeds.map(feed => new Date(feed.created_at).toISOString().slice(0, 10)));
+
+      document.getElementById("twenty-days").innerHTML = `${preciseFormat.format(twentyDayWh / 1000)}<span class="unit">kWh</span>`;
+      document.getElementById("twelve-months").textContent = `${numberFormat.format(twelveMonthWh)} Wh`;
+      document.getElementById("twelve-months-kwh").textContent = formatWhAsKwh(twelveMonthWh);
+      document.getElementById("lifetime").innerHTML = `${preciseFormat.format(lifetimeWh / 1000)}<span class="unit">kWh</span>`;
+      document.getElementById("lifetime-wh").textContent = `Cumulative inverter reading: ${numberFormat.format(lifetimeWh)} Wh`;
+      document.getElementById("peak-power").innerHTML = `${numberFormat.format(Number(peak?.field4) || 0)}<span class="unit">W</span>`;
+      document.getElementById("peak-time").textContent = peak ? `Recorded ${dateFormat.format(new Date(peak.created_at))}` : "Recorded at —";
+      document.getElementById("online-days").innerHTML = `${numberFormat.format(onlineDates.size)}<span class="unit">days</span>`;
+      document.getElementById("earnings").textContent = new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(lifetimeWh / 1000 * 0.20);
+      document.getElementById("updated").textContent = `Updated ${dateFormat.format(new Date())}`;
+      setStatus(`Loaded ${numberFormat.format(feeds.length)} readings. Latest report: ${dateFormat.format(new Date(latest.created_at))}.`, "ready");
+    }
+
+    async function loadData() {
+      const button = document.getElementById("refresh");
+      button.disabled = true;
+      setStatus("Loading inverter history…");
+      try {
+        render(await fetchAllFeeds());
+      } catch (error) {
+        setStatus(`Could not load inverter history: ${error.message}`, "error");
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    document.getElementById("refresh").addEventListener("click", loadData);
+    loadData();
+  </script>
+</body>
+</html>
