@@ -94,19 +94,24 @@
 
     <section class="grid" aria-label="Balcony solar production summary">
       <article class="metric">
-        <p class="label">Past 20 days</p>
-        <strong class="value" id="twenty-days">—<span class="unit">kWh</span></strong>
-        <p class="detail">Interval energy reported in the last 20 days</p>
+        <p class="label">Past week</p>
+        <strong class="value" id="past-week">—<span class="unit">kWh</span></strong>
+        <p class="detail">Interval energy reported in the last 7 days</p>
       </article>
       <article class="metric wide">
         <p class="label">Past 12 months</p>
-        <strong class="value" id="twelve-months">—</strong>
-        <p class="detail" id="twelve-months-kwh">Loading interval total…</p>
+        <strong class="value" id="twelve-months">—<span class="unit">kWh</span></strong>
+        <p class="detail">Interval energy reported in the last 12 months</p>
       </article>
       <article class="metric">
         <p class="label">Entire history</p>
         <strong class="value" id="lifetime">—<span class="unit">kWh</span></strong>
         <p class="detail" id="lifetime-wh">Cumulative inverter reading: — Wh</p>
+      </article>
+      <article class="metric">
+        <p class="label">Latest reading</p>
+        <strong class="value" id="latest-power">—<span class="unit">W</span></strong>
+        <p class="detail peak-time" id="latest-time">Recorded at —</p>
       </article>
       <article class="metric">
         <p class="label">Highest power</p>
@@ -136,7 +141,8 @@
     const PAGE_SIZE = 8000;
     const THINGSPEAK_URL = `https://api.thingspeak.com/channels/${CHANNEL_ID}/feeds.json`;
     const numberFormat = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
-    const preciseFormat = new Intl.NumberFormat(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+    const kwhFormat = new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const wattFormat = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
     const dateFormat = new Intl.DateTimeFormat(undefined, {
       year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short"
     });
@@ -145,10 +151,6 @@
       const status = document.getElementById("status");
       status.textContent = message;
       status.className = `status${state ? ` ${state}` : ""}`;
-    }
-
-    function formatWhAsKwh(wh) {
-      return `${preciseFormat.format(wh / 1000)} kWh`;
     }
 
     async function fetchAllFeeds() {
@@ -175,15 +177,15 @@
       if (!feeds.length) throw new Error("No inverter readings were found in this channel.");
       feeds.sort((left, right) => Date.parse(left.created_at) - Date.parse(right.created_at));
       const now = Date.now();
-      const twentyDayCutoff = now - 20 * 24 * 60 * 60 * 1000;
+      const weekCutoff = now - 7 * 24 * 60 * 60 * 1000;
       const twelveMonthDate = new Date(now);
       twelveMonthDate.setFullYear(twelveMonthDate.getFullYear() - 1);
       const twelveMonthCutoff = twelveMonthDate.getTime();
       const latest = feeds[feeds.length - 1];
       const lifetimeWh = Number(latest.field7) || 0;
-      const twentyDayWh = feeds.reduce((total, feed) => {
+      const weekWh = feeds.reduce((total, feed) => {
         const time = Date.parse(feed.created_at);
-        return time >= twentyDayCutoff && time <= now ? total + (Number(feed.field6) || 0) : total;
+        return time >= weekCutoff && time <= now ? total + (Number(feed.field6) || 0) : total;
       }, 0);
       const twelveMonthWh = feeds.reduce((total, feed) => {
         const time = Date.parse(feed.created_at);
@@ -195,12 +197,13 @@
       }, null);
       const onlineDates = new Set(feeds.map(feed => new Date(feed.created_at).toISOString().slice(0, 10)));
 
-      document.getElementById("twenty-days").innerHTML = `${preciseFormat.format(twentyDayWh / 1000)}<span class="unit">kWh</span>`;
-      document.getElementById("twelve-months").textContent = `${numberFormat.format(twelveMonthWh)} Wh`;
-      document.getElementById("twelve-months-kwh").textContent = formatWhAsKwh(twelveMonthWh);
-      document.getElementById("lifetime").innerHTML = `${preciseFormat.format(lifetimeWh / 1000)}<span class="unit">kWh</span>`;
+      document.getElementById("past-week").innerHTML = `${kwhFormat.format(weekWh / 1000)}<span class="unit">kWh</span>`;
+      document.getElementById("twelve-months").innerHTML = `${kwhFormat.format(twelveMonthWh / 1000)}<span class="unit">kWh</span>`;
+      document.getElementById("lifetime").innerHTML = `${kwhFormat.format(lifetimeWh / 1000)}<span class="unit">kWh</span>`;
       document.getElementById("lifetime-wh").textContent = `Cumulative inverter reading: ${numberFormat.format(lifetimeWh)} Wh`;
-      document.getElementById("peak-power").innerHTML = `${numberFormat.format(Number(peak?.field4) || 0)}<span class="unit">W</span>`;
+      document.getElementById("latest-power").innerHTML = `${wattFormat.format(Number(latest.field4) || 0)}<span class="unit">W</span>`;
+      document.getElementById("latest-time").textContent = `Recorded ${dateFormat.format(new Date(latest.created_at))}`;
+      document.getElementById("peak-power").innerHTML = `${wattFormat.format(Number(peak?.field4) || 0)}<span class="unit">W</span>`;
       document.getElementById("peak-time").textContent = peak ? `Recorded ${dateFormat.format(new Date(peak.created_at))}` : "Recorded at —";
       document.getElementById("online-days").innerHTML = `${numberFormat.format(onlineDates.size)}<span class="unit">days</span>`;
       document.getElementById("earnings").textContent = new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(lifetimeWh / 1000 * 0.20);
