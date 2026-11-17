@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>40 Hz Gamma Entrainment (GENUS) Studio</title>
+  <!-- Load Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & JetBrains Mono for precision telemetry -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+        },
+      },
+    };
+  </script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen antialiased selection:bg-amber-500/30 selection:text-amber-200 overflow-x-hidden">
+
+  <!-- Full-Screen Visual Flicker Layer (Behind Controls, Above Base Canvas) -->
+  <div
+    id="flickerLayer"
+    class="fixed inset-0 pointer-events-none z-0 transition-none opacity-0"
+    style="background-color: #fff3d6; will-change: opacity;"
+    aria-hidden="true"
+  ></div>
+
+  <!-- Subtle Floating Pill When Controls Are Hidden During Active Session -->
+  <div
+    id="minimizedBar"
+    class="fixed bottom-5 left-1/2 -translate-x-1/2 z-30 hidden items-center gap-3 px-4 py-2.5 rounded-full bg-slate-900/90 border border-slate-700/80 shadow-2xl backdrop-blur-md"
+  >
+    <span class="relative flex h-2.5 w-2.5">
+      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+      <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+    </span>
+    <span id="miniTimerDisplay" class="font-mono text-sm font-semibold text-slate-100">60:00</span>
+    <span class="text-slate-600">|</span>
+    <button
+      id="showControlsBtn"
+      type="button"
+      class="text-xs font-medium text-amber-300 hover:text-amber-200 px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 transition"
+    >
+      Show Controls (Esc)
+    </button>
+    <button
+      id="miniStopBtn"
+      type="button"
+      class="text-xs font-medium text-rose-300 hover:text-rose-200 px-2.5 py-1 rounded-lg bg-rose-950/80 border border-rose-800/60 hover:bg-rose-900/80 transition"
+    >
+      Stop
+    </button>
+  </div>
+
+  <!-- Main Control Overlay Container -->
+  <main id="controlOverlay" class="relative z-10 max-w-4xl mx-auto px-4 py-6 sm:py-10 flex flex-col gap-5">
+
+    <!-- Header & Safety Notice -->
+    <header class="bg-slate-900/85 backdrop-blur-xl border border-slate-800/90 rounded-2xl p-5 sm:p-6 shadow-2xl">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs font-medium mb-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+            GENUS Protocol • 40.00 Hz Gamma Entrainment
+          </div>
+          <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-white">
+            40 Hz Sensory Entrainment Studio
+          </h1>
+          <p class="text-xs sm:text-sm text-slate-400 mt-1">
+            Phase-locked 25.0 ms visual square-wave &amp; hardware-clocked Web Audio isochronic pulse generator.
+          </p>
+        </div>
+
+        <!-- Primary Transport Controls -->
+        <div class="flex items-center gap-2.5 shrink-0">
+          <button
+            id="startPauseBtn"
+            type="button"
+            class="px-5 py-3 rounded-xl font-semibold text-sm bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] text-slate-950 shadow-lg shadow-emerald-500/20 transition flex items-center gap-2 cursor-pointer"
+          >
+            <svg id="playIcon" class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            <svg id="pauseIcon" class="w-4 h-4 fill-current hidden" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+            <span id="startPauseLabel">Start Session</span>
+          </button>
+
+          <button
+            id="resetBtn"
+            type="button"
+            class="px-3.5 py-3 rounded-xl font-medium text-sm bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/80 transition cursor-pointer"
+            title="Stop & Reset Timer (Esc)"
+          >
+            Reset
+          </button>
+        </div>
+      </div>
+
+      <!-- Photosensitive Epilepsy & Comfort Safety Notice -->
+      <div class="mt-4 p-3.5 rounded-xl bg-rose-950/35 border border-rose-800/50 flex items-start gap-3 text-xs text-rose-200/90 leading-relaxed">
+        <svg class="w-4 h-4 text-rose-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+        </svg>
+        <div>
+          <strong class="font-semibold text-rose-200">Photosensitivity &amp; Comfort Notice:</strong>
+          40 Hz light produces a rapid visible flicker. <strong>Do not use visual flicker</strong> if you have photosensitive epilepsy, a history of seizures, or severe flicker-induced migraines. For preventative desk sessions, keep the light in your peripheral vision at a comfortable brightness and discontinue if you feel eye strain or dizziness.
+        </div>
+      </div>
+    </header>
+
+    <!-- Live Monitor Refresh Rate & Nyquist Diagnostic Meter -->
+    <section class="bg-slate-900/85 backdrop-blur-xl border border-slate-800/90 rounded-2xl p-5 sm:p-6 shadow-xl">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="p-2 rounded-xl bg-slate-800 border border-slate-700/70 text-sky-400">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" />
+            </svg>
+          </div>
+          <div>
+            <h2 class="text-sm font-semibold text-white">Monitor Refresh Rate &amp; Nyquist Diagnostic</h2>
+            <p class="text-xs text-slate-400">Requires &ge; 80 Hz refresh rate (80+ FPS) for accurate 40 Hz on/off rendering</p>
+          </div>
+        </div>
+
+        <!-- Telemetry Badges -->
+        <div class="flex items-center gap-2 font-mono text-xs">
+          <span class="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-300">
+            Measured: <strong id="fpsReadout" class="text-sky-400">--.-</strong> FPS
+          </span>
+          <span class="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-300">
+            Frame: <strong id="frameDeltaReadout" class="text-slate-200">--.-</strong> ms
+          </span>
+        </div>
+      </div>
+
+      <!-- Dynamic Nyquist Verdict Banner -->
+      <div id="nyquistBanner" class="p-3.5 rounded-xl bg-slate-950/90 border border-slate-800 text-xs flex items-start gap-3 transition-colors">
+        <span id="nyquistDot" class="w-2.5 h-2.5 rounded-full bg-slate-500 mt-1 shrink-0"></span>
+        <div id="nyquistMessage" class="text-slate-300 leading-relaxed">
+          Sampling display refresh cadence via <code class="font-mono text-sky-300">requestAnimationFrame</code>...
+        </div>
+      </div>
+    </section>
+
+    <!-- Dual Sensory Controls Grid: Visual Flicker + 40 Hz Audio -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+      <!-- Card 1: Visual Flicker Configuration -->
+      <section class="bg-slate-900/85 backdrop-blur-xl border border-slate-800/90 rounded-2xl p-5 sm:p-6 shadow-xl flex flex-col justify-between gap-5">
+        <div>
+          <div class="flex items-center justify-between gap-3 mb-4">
+            <div class="flex items-center gap-2.5">
+              <div class="p-2 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+                </svg>
+              </div>
+              <div>
+                <h2 class="text-base font-semibold text-white">Visual 40 Hz Flicker</h2>
+                <p class="text-xs text-slate-400">12.5 ms ON / 12.5 ms OFF square wave</p>
+              </div>
+            </div>
+
+            <!-- Independent Visual Toggle -->
+            <button
+              id="visualToggleBtn"
+              type="button"
+              role="switch"
+              aria-checked="true"
+              class="relative inline-flex h-7 w-13 shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-amber-500 transition-colors duration-200 ease-in-out focus:outline-none p-0.5"
+              title="Toggle Visual Flicker ON/OFF"
+            >
+              <span id="visualToggleKnob" class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-slate-950 shadow ring-0 transition duration-200 ease-in-out translate-x-5"></span>
+            </button>
+          </div>
+
+          <!-- Color Temperature Presets -->
+          <div class="mb-4">
+            <label class="block text-xs font-medium text-slate-300 mb-2">Light Spectrum / Tint</label>
+            <div class="grid grid-cols-3 gap-2" id="colorPresetGroup">
+              <button
+                type="button"
+                data-color="#fff3d6"
+                data-name="Warm White"
+                class="color-preset-btn px-3 py-2.5 rounded-xl text-xs font-medium border border-amber-400 bg-amber-500/15 text-amber-200 flex items-center justify-center gap-2 transition cursor-pointer"
+              >
+                <span class="w-3 h-3 rounded-full bg-[#fff3d6] border border-slate-500"></span>
+                Warm
+              </button>
+              <button
+                type="button"
+                data-color="#f8fafc"
+                data-name="Neutral White"
+                class="color-preset-btn px-3 py-2.5 rounded-xl text-xs font-medium border border-slate-700 bg-slate-800/80 text-slate-300 hover:bg-slate-800 flex items-center justify-center gap-2 transition cursor-pointer"
+              >
+                <span class="w-3 h-3 rounded-full bg-[#f8fafc] border border-slate-500"></span>
+                Neutral
+              </button>
+              <button
+                type="button"
+                data-color="#ffbe55"
+                data-name="Soft Amber"
+                class="color-preset-btn px-3 py-2.5 rounded-xl text-xs font-medium border border-slate-700 bg-slate-800/80 text-slate-300 hover:bg-slate-800 flex items-center justify-center gap-2 transition cursor-pointer"
+              >
+                <span class="w-3 h-3 rounded-full bg-[#ffbe55] border border-slate-500"></span>
+                Amber
+              </button>
+            </div>
+          </div>
+
+          <!-- Brightness / Peak Opacity Slider -->
+          <div class="mb-4">
+            <div class="flex justify-between items-center text-xs mb-1.5">
+              <label for="brightnessSlider" class="font-medium text-slate-300">Peak Flicker Intensity</label>
+              <span id="brightnessValue" class="font-mono text-amber-300 font-semibold">45%</span>
+            </div>
+            <input
+              id="brightnessSlider"
+              type="range"
+              min="5"
+              max="100"
+              value="45"
+              class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-400"
+            />
+            <p class="text-[11px] text-slate-400 mt-1">
+              Tip: 30%–55% is ideal for comfortable peripheral desk exposure without glare.
+            </p>
+          </div>
+        </div>
+
+        <!-- Immersive Hide-UI Button -->
+        <button
+          id="hideControlsBtn"
+          type="button"
+          class="w-full py-2.5 px-4 rounded-xl text-xs font-medium bg-slate-800/90 hover:bg-slate-700/90 text-slate-200 border border-slate-700/80 transition flex items-center justify-center gap-2 cursor-pointer"
+        >
+          <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+          </svg>
+          Hide Overlay for Peripheral Immersion
+        </button>
+      </section>
+
+      <!-- Card 2: 40 Hz Isochronic Audio Engine -->
+      <section class="bg-slate-900/85 backdrop-blur-xl border border-slate-800/90 rounded-2xl p-5 sm:p-6 shadow-xl flex flex-col justify-between gap-5">
+        <div>
+          <div class="flex items-center justify-between gap-3 mb-4">
+            <div class="flex items-center gap-2.5">
+              <div class="p-2 rounded-xl bg-sky-500/15 border border-sky-500/30 text-sky-300">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+                </svg>
+              </div>
+              <div>
+                <h2 class="text-base font-semibold text-white">40 Hz Isochronic Audio</h2>
+                <p class="text-xs text-slate-400">Hardware-clocked Web Audio API pulse</p>
+              </div>
+            </div>
+
+            <!-- Independent Audio Toggle -->
+            <button
+              id="audioToggleBtn"
+              type="button"
+              role="switch"
+              aria-checked="true"
+              class="relative inline-flex h-7 w-13 shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-sky-500 transition-colors duration-200 ease-in-out focus:outline-none p-0.5"
+              title="Toggle 40 Hz Audio ON/OFF"
+            >
+              <span id="audioToggleKnob" class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-slate-950 shadow ring-0 transition duration-200 ease-in-out translate-x-5"></span>
+            </button>
+          </div>
+
+          <!-- Carrier Frequency / Texture Selector -->
+          <div class="mb-4">
+            <label class="block text-xs font-medium text-slate-300 mb-2">Carrier Tone / Acoustic Texture</label>
+            <div class="grid grid-cols-2 gap-2" id="carrierPresetGroup">
+              <button
+                type="button"
+                data-carrier="136.1"
+                class="carrier-preset-btn px-3 py-2 rounded-xl text-xs font-medium border border-slate-700 bg-slate-800/80 text-slate-300 hover:bg-slate-800 text-left transition cursor-pointer"
+              >
+                <div class="font-semibold">136.1 Hz</div>
+                <div class="text-[11px] text-slate-400">Deep Earth Warm</div>
+              </button>
+              <button
+                type="button"
+                data-carrier="160"
+                class="carrier-preset-btn px-3 py-2 rounded-xl text-xs font-medium border border-sky-400 bg-sky-500/15 text-sky-200 text-left transition cursor-pointer"
+              >
+                <div class="font-semibold">160 Hz (Default)</div>
+                <div class="text-[11px] text-sky-300/80">Balanced Isochronic</div>
+              </button>
+              <button
+                type="button"
+                data-carrier="200"
+                class="carrier-preset-btn px-3 py-2 rounded-xl text-xs font-medium border border-slate-700 bg-slate-800/80 text-slate-300 hover:bg-slate-800 text-left transition cursor-pointer"
+              >
+                <div class="font-semibold">200 Hz</div>
+                <div class="text-[11px] text-slate-400">Crisp Gamma Pulse</div>
+              </button>
+              <button
+                type="button"
+                data-carrier="pink"
+                class="carrier-preset-btn px-3 py-2 rounded-xl text-xs font-medium border border-slate-700 bg-slate-800/80 text-slate-300 hover:bg-slate-800 text-left transition cursor-pointer"
+              >
+                <div class="font-semibold">Pink Noise Pulse</div>
+                <div class="text-[11px] text-slate-400">Soft Rain-Like 40 Hz</div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Audio Volume Slider -->
+          <div>
+            <div class="flex justify-between items-center text-xs mb-1.5">
+              <label for="volumeSlider" class="font-medium text-slate-300">Audio Output Level</label>
+              <span id="volumeValue" class="font-mono text-sky-300 font-semibold">35%</span>
+            </div>
+            <input
+              id="volumeSlider"
+              type="range"
+              min="0"
+              max="100"
+              value="35"
+              class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-400"
+            />
+          </div>
+        </div>
+
+        <!-- Background Tab / WLED Hybrid Tip -->
+        <div class="p-3 rounded-xl bg-slate-950/80 border border-slate-800/90 text-[11px] text-slate-400 leading-relaxed">
+          <strong class="text-slate-200">Background &amp; WLED Hybrid Mode:</strong> Audio runs on a dedicated hardware sample clock and continues smoothly in background tabs—ideal if pairing browser audio with your external WLED/ESP32 strip.
+        </div>
+      </section>
+    </div>
+
+    <!-- Session Countdown Timer & Keyboard Shortcuts -->
+    <section class="bg-slate-900/85 backdrop-blur-xl border border-slate-800/90 rounded-2xl p-5 sm:p-6 shadow-xl">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-sm font-semibold text-white">Session Countdown Timer</h2>
+          <p class="text-xs text-slate-400 mt-0.5">
+            Automatically fades out audio and stops visual flicker at 00:00.
+          </p>
+          <!-- Duration Presets -->
+          <div class="flex flex-wrap items-center gap-2 mt-3" id="timerPresetGroup">
+            <button type="button" data-minutes="15" class="timer-preset-btn px-3 py-1.5 rounded-xl text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition cursor-pointer">15 min</button>
+            <button type="button" data-minutes="30" class="timer-preset-btn px-3 py-1.5 rounded-xl text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition cursor-pointer">30 min</button>
+            <button type="button" data-minutes="45" class="timer-preset-btn px-3 py-1.5 rounded-xl text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition cursor-pointer">45 min</button>
+            <button type="button" data-minutes="60" class="timer-preset-btn px-3 py-1.5 rounded-xl text-xs font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/50 transition cursor-pointer">60 min (Trial Std)</button>
+          </div>
+        </div>
+
+        <!-- Digital Clock Readout -->
+        <div class="flex flex-col sm:items-end justify-center bg-slate-950/90 border border-slate-800 px-5 py-3.5 rounded-2xl">
+          <span class="text-[11px] uppercase tracking-wider text-slate-400 font-medium">Remaining Time</span>
+          <div id="timerDisplay" class="font-mono text-3xl sm:text-4xl font-bold tracking-tight text-white mt-0.5">
+            60:00
+          </div>
+          <span id="sessionStatusText" class="text-[11px] text-slate-400 mt-1">Ready • Press Space to start</span>
+        </div>
+      </div>
+
+      <!-- Footer Shortcuts Legend -->
+      <div class="mt-4 pt-3.5 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400">
+        <div class="flex items-center gap-4">
+          <span><kbd class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-mono text-slate-200">Space</kbd> Start / Pause</span>
+          <span><kbd class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-mono text-slate-200">Esc</kbd> Stop / Show Controls</span>
+        </div>
+        <span class="font-mono text-slate-500">Period: 25.00 ms • Duty: 50%</span>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Toast / Status Notification Banner (Replaces alert()) -->
+  <div
+    id="toastBanner"
+    class="fixed top-4 right-4 z-50 max-w-sm px-4 py-3 rounded-xl bg-slate-900 border border-emerald-500/50 text-slate-100 text-xs shadow-2xl transform transition-all duration-300 translate-y-[-150%] opacity-0 pointer-events-none"
+    role="status"
+  >
+    <div class="flex items-center gap-2.5">
+      <span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
+      <span id="toastText">Session complete.</span>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      // =========================================================================
+      // 1. STATE & CONSTANTS
+      // =========================================================================
+      const TARGET_FREQ_HZ = 40.0;
+      const PERIOD_MS = 1000.0 / TARGET_FREQ_HZ; // 25.0 ms exact
+      const HALF_PERIOD_MS = PERIOD_MS / 2.0;    // 12.5 ms ON / 12.5 ms OFF
+
+      const state = {
+        isRunning: false,
+        visualEnabled: true,
+        audioEnabled: true,
+        flickerColor: '#fff3d6',
+        peakOpacity: 0.45,
+        carrierType: '160', // '136.1' | '160' | '200' | 'pink'
+        volume: 0.35,
+        selectedMinutes: 60,
+        remainingSeconds: 60 * 60,
+        sessionStartPerf: 0,
+        lastTimerTick: 0,
+        controlsHidden: false,
+      };
+
+      // =========================================================================
+      // 2. DOM REFERENCES
+      // =========================================================================
+      const flickerLayer = document.getElementById('flickerLayer');
+      const controlOverlay = document.getElementById('controlOverlay');
+      const minimizedBar = document.getElementById('minimizedBar');
+      const miniTimerDisplay = document.getElementById('miniTimerDisplay');
+      const showControlsBtn = document.getElementById('showControlsBtn');
+      const hideControlsBtn = document.getElementById('hideControlsBtn');
+      const miniStopBtn = document.getElementById('miniStopBtn');
+
+      const startPauseBtn = document.getElementById('startPauseBtn');
+      const startPauseLabel = document.getElementById('startPauseLabel');
+      const playIcon = document.getElementById('playIcon');
+      const pauseIcon = document.getElementById('pauseIcon');
+      const resetBtn = document.getElementById('resetBtn');
+
+      const fpsReadout = document.getElementById('fpsReadout');
+      const frameDeltaReadout = document.getElementById('frameDeltaReadout');
+      const nyquistBanner = document.getElementById('nyquistBanner');
+      const nyquistDot = document.getElementById('nyquistDot');
+      const nyquistMessage = document.getElementById('nyquistMessage');
+
+      const visualToggleBtn = document.getElementById('visualToggleBtn');
+      const visualToggleKnob = document.getElementById('visualToggleKnob');
+      const colorPresetBtns = document.querySelectorAll('.color-preset-btn');
+      const brightnessSlider = document.getElementById('brightnessSlider');
+      const brightnessValue = document.getElementById('brightnessValue');
+
+      const audioToggleBtn = document.getElementById('audioToggleBtn');
+      const audioToggleKnob = document.getElementById('audioToggleKnob');
+      const carrierPresetBtns = document.querySelectorAll('.carrier-preset-btn');
+      const volumeSlider = document.getElementById('volumeSlider');
+      const volumeValue = document.getElementById('volumeValue');
+
+      const timerPresetBtns = document.querySelectorAll('.timer-preset-btn');
+      const timerDisplay = document.getElementById('timerDisplay');
+      const sessionStatusText = document.getElementById('sessionStatusText');
+
+      const toastBanner = document.getElementById('toastBanner');
+      const toastText = document.getElementById('toastText');
+
+      // =========================================================================
+      // 3. NON-BLOCKING TOAST NOTIFICATION (No alert())
+      // =========================================================================
+      let toastTimeout = null;
+      function showToast(message) {
+        toastText.textContent = message;
+        toastBanner.classList.remove('translate-y-[-150%]', 'opacity-0');
+        toastBanner.classList.add('translate-y-0', 'opacity-100');
+        if (toastTimeout) clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(() => {
+          toastBanner.classList.remove('translate-y-0', 'opacity-100');
+          toastBanner.classList.add('translate-y-[-150%]', 'opacity-0');
+        }, 4000);
+      }
+
+      // =========================================================================
+      // 4. WEB AUDIO API: HARDWARE-CLOCKED 40 HZ ISOCHRONIC ENGINE
+      // =========================================================================
+      let audioCtx = null;
+      let masterGain = null;
+      let carrierOsc = null;
+      let pinkNoiseNode = null;
+      let lfoOsc = null;
+      let lfoFilter = null;
+      let modulationGain = null;
+      let isAudioGraphBuilt = false;
+
+      /**
+       * Creates a seamless 4-second looping pink noise buffer (Paul Kellet's filter)
+       * for soft acoustic 40 Hz pulsing.
+       */
+      function createPinkNoiseBuffer(ctx) {
+        const bufferSize = ctx.sampleRate * 4;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const output = buffer.getChannelData(0);
+        let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+
+        for (let i = 0; i < bufferSize; i++) {
+          const white = Math.random() * 2 - 1;
+          b0 = 0.99886 * b0 + white * 0.0555179;
+          b1 = 0.99332 * b1 + white * 0.0750759;
+          b2 = 0.96900 * b2 + white * 0.1538520;
+          b3 = 0.86650 * b3 + white * 0.3104856;
+          b4 = 0.55000 * b4 + white * 0.5329522;
+          b5 = -0.7616 * b5 - white * 0.0168980;
+          output[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.08;
+          b6 = white * 0.115926;
+        }
+        return buffer;
+      }
+
+      /**
+       * Initializes the Web Audio graph once on first user gesture.
+       * Architecture:
+       *   [Carrier Osc OR Pink Noise] ---> [modulationGain] ---> [masterGain] ---> Destination
+       *                                          ^
+       *   [40 Hz Square LFO] -> [Lowpass 180Hz] -+ (Smooths edges to eliminate clicks)
+       */
+      function initAudioEngine() {
+        if (isAudioGraphBuilt) return;
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContextClass();
+
+        // Master output gain (starts at 0 for click-free fade-in)
+        masterGain = audioCtx.createGain();
+        masterGain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+        masterGain.connect(audioCtx.destination);
+
+        // Amplitude modulation VCA node
+        // Base gain is 0.5; LFO swings +/- 0.5 => sweeps smoothly between 0.0 and 1.0 at 40 Hz
+        modulationGain = audioCtx.createGain();
+        modulationGain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+        modulationGain.connect(masterGain);
+
+        // 40 Hz LFO (Square wave passed through a gentle lowpass filter to round harsh transients)
+        lfoOsc = audioCtx.createOscillator();
+        lfoOsc.type = 'square';
+        lfoOsc.frequency.setValueAtTime(TARGET_FREQ_HZ, audioCtx.currentTime);
+
+        lfoFilter = audioCtx.createBiquadFilter();
+        lfoFilter.type = 'lowpass';
+        lfoFilter.frequency.setValueAtTime(180, audioCtx.currentTime); // ~2ms soft envelope ramp
+
+        const lfoDepth = audioCtx.createGain();
+        lfoDepth.gain.setValueAtTime(0.5, audioCtx.currentTime);
+
+        lfoOsc.connect(lfoFilter);
+        lfoFilter.connect(lfoDepth);
+        lfoDepth.connect(modulationGain.gain);
+        lfoOsc.start();
+
+        isAudioGraphBuilt = true;
+        configureCarrierSource();
+      }
+
+      /**
+       * Switches between warm sine/triangle carrier frequencies or pink noise
+       * without interrupting the 40 Hz LFO clock.
+       */
+      function configureCarrierSource() {
+        if (!isAudioGraphBuilt || !audioCtx) return;
+        const now = audioCtx.currentTime;
+
+        // Clean up existing sources safely
+        if (carrierOsc) {
+          try { carrierOsc.stop(); carrierOsc.disconnect(); } catch (e) {}
+          carrierOsc = null;
+        }
+        if (pinkNoiseNode) {
+          try { pinkNoiseNode.stop(); pinkNoiseNode.disconnect(); } catch (e) {}
+          pinkNoiseNode = null;
+        }
+
+        if (state.carrierType === 'pink') {
+          pinkNoiseNode = audioCtx.createBufferSource();
+          pinkNoiseNode.buffer = createPinkNoiseBuffer(audioCtx);
+          pinkNoiseNode.loop = true;
+
+          // Warm low-pass filter on pink noise so it sounds soothing
+          const noiseFilter = audioCtx.createBiquadFilter();
+          noiseFilter.type = 'lowpass';
+          noiseFilter.frequency.setValueAtTime(950, now);
+
+          pinkNoiseNode.connect(noiseFilter);
+          noiseFilter.connect(modulationGain);
+          pinkNoiseNode.start();
+        } else {
+          const freq = parseFloat(state.carrierType) || 160;
+          // Blend a warm sine fundamental with a subtle sub-octave triangle feel
+          carrierOsc = audioCtx.createOscillator();
+          carrierOsc.type = 'sine';
+          carrierOsc.frequency.setValueAtTime(freq, now);
+          carrierOsc.connect(modulationGain);
+          carrierOsc.start();
+        }
+      }
+
+      /**
+       * Smoothly fades audio in or out (80ms ramp) to prevent speaker pops.
+       */
+      function syncAudioOutput() {
+        if (!isAudioGraphBuilt || !audioCtx || !masterGain) return;
+
+        if (audioCtx.state === 'suspended' && state.isRunning && state.audioEnabled) {
+          audioCtx.resume();
+        }
+
+        const now = audioCtx.currentTime;
+        const shouldPlay = state.isRunning && state.audioEnabled && state.volume > 0;
+        // Scale perceptual volume curve (quadratic) for comfortable fine control
+        const targetGain = shouldPlay ? Math.pow(state.volume, 1.5) * 0.45 : 0.0001;
+
+        masterGain.gain.cancelScheduledValues(now);
+        masterGain.gain.setValueAtTime(Math.max(0.0001, masterGain.gain.value), now);
+        masterGain.gain.exponentialRampToValueAtTime(Math.max(0.0001, targetGain), now + 0.08);
+      }
+
+      // =========================================================================
+      // 5. MONITOR REFRESH RATE & NYQUIST DIAGNOSTIC + 40 HZ VISUAL LOOP
+      // =========================================================================
+      const frameTimes = [];
+      let lastFramePerf = performance.now();
+      let lastDiagnosticUpdate = 0;
+
+      function updateNyquistDiagnostic(fps, avgDeltaMs) {
+        fpsReadout.textContent = fps.toFixed(1);
+        frameDeltaReadout.textContent = avgDeltaMs.toFixed(2);
+
+        if (fps >= 115) {
+          // 120 Hz, 144 Hz, 240 Hz+ monitors
+          nyquistBanner.className = 'p-3.5 rounded-xl bg-emerald-950/35 border border-emerald-700/50 text-xs flex items-start gap-3 transition-colors';
+          nyquistDot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 mt-1 shrink-0';
+          nyquistMessage.innerHTML = `<strong class="text-emerald-300">Optimal High-Refresh Display (${Math.round(fps)} Hz):</strong> Exceeds the 80 Hz Nyquist threshold. Your monitor can cleanly render phase-locked 40 Hz visual square-wave stimulation.`;
+        } else if (fps >= 78) {
+          // 80 Hz - 114 Hz monitors
+          nyquistBanner.className = 'p-3.5 rounded-xl bg-emerald-950/25 border border-emerald-800/50 text-xs flex items-start gap-3 transition-colors';
+          nyquistDot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 mt-1 shrink-0';
+          nyquistMessage.innerHTML = `<strong class="text-emerald-300">Nyquist Threshold Met (${Math.round(fps)} Hz):</strong> Display refresh rate is &ge; 80 Hz and supports 40 Hz visual toggling.`;
+        } else {
+          // Standard 60 Hz (or throttled battery-saver) displays
+          nyquistBanner.className = 'p-3.5 rounded-xl bg-amber-950/40 border border-amber-700/60 text-xs flex items-start gap-3 transition-colors';
+          nyquistDot.className = 'w-2.5 h-2.5 rounded-full bg-amber-400 mt-1 shrink-0';
+          nyquistMessage.innerHTML = `<strong class="text-amber-300">60 Hz Display Detected (${Math.round(fps)} Hz) — Below 80 Hz Nyquist Limit:</strong> A 60 Hz screen cannot display true 40 Hz on/off pulses (12.5 ms) and will produce uneven frame judder. <strong>Recommendation:</strong> Switch <em>Visual 40 Hz Flicker</em> OFF and run <em>40 Hz Isochronic Audio</em> alongside your external WLED / ESP32 LED strip.`;
+        }
+      }
+
+      /**
+       * Main animation loop running continuously for FPS telemetry and
+       * phase-locked 40.00 Hz visual square-wave modulation.
+       */
+      function animationLoop(now) {
+        // 1. Measure display refresh rate via rolling window of rAF deltas
+        const delta = now - lastFramePerf;
+        lastFramePerf = now;
+
+        if (delta > 1 && delta < 250) {
+          frameTimes.push(delta);
+          if (frameTimes.length > 60) frameTimes.shift();
+        }
+
+        if (now - lastDiagnosticUpdate > 500 && frameTimes.length >= 10) {
+          const avgDelta = frameTimes.reduce((a, b) => a + b, 0) / frameTimes.length;
+          const measuredFps = 1000 / avgDelta;
+          updateNyquistDiagnostic(measuredFps, avgDelta);
+          lastDiagnosticUpdate = now;
+        }
+
+        // 2. Phase-locked 40 Hz visual square wave (25.0 ms period: 12.5 ms ON, 12.5 ms OFF)
+        if (state.isRunning && state.visualEnabled) {
+          const elapsed = now - state.sessionStartPerf;
+          const phaseInPeriod = elapsed % PERIOD_MS;
+          const isOnPhase = phaseInPeriod < HALF_PERIOD_MS;
+          flickerLayer.style.opacity = isOnPhase ? String(state.peakOpacity) : '0';
+        } else {
+          if (flickerLayer.style.opacity !== '0') {
+            flickerLayer.style.opacity = '0';
+          }
+        }
+
+        // 3. Accurate wall-clock countdown timer update
+        if (state.isRunning) {
+          if (now - state.lastTimerTick >= 1000) {
+            const elapsedSec = Math.floor((now - state.lastTimerTick) / 1000);
+            state.lastTimerTick += elapsedSec * 1000;
+            state.remainingSeconds = Math.max(0, state.remainingSeconds - elapsedSec);
+            renderTimerDisplay();
+
+            if (state.remainingSeconds === 0) {
+              completeSession();
+            }
+          }
+        }
+
+        requestAnimationFrame(animationLoop);
+      }
+
+      // =========================================================================
+      // 6. TIMER & SESSION TRANSPORT CONTROLS
+      // =========================================================================
+      function formatTime(totalSeconds) {
+        const mins = Math.floor(totalSeconds / 60);
+        const secs = totalSeconds % 60;
+        return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+      }
+
+      function renderTimerDisplay() {
+        const formatted = formatTime(state.remainingSeconds);
+        timerDisplay.textContent = formatted;
+        miniTimerDisplay.textContent = formatted;
+        document.title = state.isRunning
+          ? `[${formatted}] 40 Hz GENUS Studio`
+          : '40 Hz Gamma Entrainment (GENUS) Studio';
+      }
+
+      function startSession() {
+        if (state.remainingSeconds <= 0) {
+          state.remainingSeconds = state.selectedMinutes * 60;
+          renderTimerDisplay();
+        }
+
+        initAudioEngine();
+        state.isRunning = true;
+        state.sessionStartPerf = performance.now();
+        state.lastTimerTick = performance.now();
+
+        syncAudioOutput();
+        updateTransportUI();
+      }
+
+      function pauseSession() {
+        state.isRunning = false;
+        flickerLayer.style.opacity = '0';
+        syncAudioOutput();
+        updateTransportUI();
+      }
+
+      function resetSession() {
+        state.isRunning = false;
+        state.remainingSeconds = state.selectedMinutes * 60;
+        flickerLayer.style.opacity = '0';
+        syncAudioOutput();
+        renderTimerDisplay();
+        updateTransportUI();
+        if (state.controlsHidden) {
+          setControlsVisibility(true);
+        }
+      }
+
+      function completeSession() {
+        state.isRunning = false;
+        flickerLayer.style.opacity = '0';
+        syncAudioOutput();
+        updateTransportUI();
+        if (state.controlsHidden) {
+          setControlsVisibility(true);
+        }
+        showToast('40 Hz entrainment session complete. Light and audio stopped.');
+      }
+
+      function updateTransportUI() {
+        if (state.isRunning) {
+          startPauseBtn.classList.remove('bg-emerald-500', 'hover:bg-emerald-400', 'shadow-emerald-500/20');
+          startPauseBtn.classList.add('bg-amber-400', 'hover:bg-amber-300', 'shadow-amber-400/20');
+          startPauseLabel.textContent = 'Pause Session';
+          playIcon.classList.add('hidden');
+          pauseIcon.classList.remove('hidden');
+
+          const activeModes = [];
+          if (state.visualEnabled) activeModes.push('40 Hz Light');
+          if (state.audioEnabled) activeModes.push('40 Hz Audio');
+          sessionStatusText.textContent = activeModes.length > 0
+            ? `Active • Running ${activeModes.join(' + ')}`
+            : 'Active • Both Visual & Audio muted';
+          sessionStatusText.className = 'text-[11px] text-emerald-400 mt-1 font-medium';
+        } else {
+          startPauseBtn.classList.remove('bg-amber-400', 'hover:bg-amber-300', 'shadow-amber-400/20');
+          startPauseBtn.classList.add('bg-emerald-500', 'hover:bg-emerald-400', 'shadow-emerald-500/20');
+          startPauseLabel.textContent = state.remainingSeconds < state.selectedMinutes * 60 && state.remainingSeconds > 0
+            ? 'Resume Session'
+            : 'Start Session';
+          playIcon.classList.remove('hidden');
+          pauseIcon.classList.add('hidden');
+          sessionStatusText.textContent = 'Paused • Press Space to start';
+          sessionStatusText.className = 'text-[11px] text-slate-400 mt-1';
+        }
+      }
+
+      function setControlsVisibility(visible) {
+        state.controlsHidden = !visible;
+        if (visible) {
+          controlOverlay.classList.remove('hidden');
+          minimizedBar.classList.add('hidden');
+          minimizedBar.classList.remove('flex');
+        } else {
+          controlOverlay.classList.add('hidden');
+          minimizedBar.classList.remove('hidden');
+          minimizedBar.classList.add('flex');
+        }
+      }
+
+      // =========================================================================
+      // 7. UI EVENT LISTENERS
+      // =========================================================================
+      startPauseBtn.addEventListener('click', () => {
+        if (state.isRunning) {
+          pauseSession();
+        } else {
+          startSession();
+        }
+      });
+
+      resetBtn.addEventListener('click', resetSession);
+      miniStopBtn.addEventListener('click', resetSession);
+
+      hideControlsBtn.addEventListener('click', () => {
+        setControlsVisibility(false);
+        if (!state.isRunning) {
+          startSession();
+        }
+      });
+
+      showControlsBtn.addEventListener('click', () => {
+        setControlsVisibility(true);
+      });
+
+      // Independent Visual Toggle
+      visualToggleBtn.addEventListener('click', () => {
+        state.visualEnabled = !state.visualEnabled;
+        visualToggleBtn.setAttribute('aria-checked', String(state.visualEnabled));
+        if (state.visualEnabled) {
+          visualToggleBtn.classList.remove('bg-slate-700');
+          visualToggleBtn.classList.add('bg-amber-500');
+          visualToggleKnob.classList.add('translate-x-5');
+          visualToggleKnob.classList.remove('translate-x-0');
+        } else {
+          visualToggleBtn.classList.remove('bg-amber-500');
+          visualToggleBtn.classList.add('bg-slate-700');
+          visualToggleKnob.classList.remove('translate-x-5');
+          visualToggleKnob.classList.add('translate-x-0');
+          flickerLayer.style.opacity = '0';
+        }
+        updateTransportUI();
+      });
+
+      // Independent Audio Toggle
+      audioToggleBtn.addEventListener('click', () => {
+        state.audioEnabled = !state.audioEnabled;
+        audioToggleBtn.setAttribute('aria-checked', String(state.audioEnabled));
+        if (state.audioEnabled) {
+          audioToggleBtn.classList.remove('bg-slate-700');
+          audioToggleBtn.classList.add('bg-sky-500');
+          audioToggleKnob.classList.add('translate-x-5');
+          audioToggleKnob.classList.remove('translate-x-0');
+          if (state.isRunning) initAudioEngine();
+        } else {
+          audioToggleBtn.classList.remove('bg-sky-500');
+          audioToggleBtn.classList.add('bg-slate-700');
+          audioToggleKnob.classList.remove('translate-x-5');
+          audioToggleKnob.classList.add('translate-x-0');
+        }
+        syncAudioOutput();
+        updateTransportUI();
+      });
+
+      // Light Color Presets
+      colorPresetBtns.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.flickerColor = btn.dataset.color;
+          flickerLayer.style.backgroundColor = state.flickerColor;
+
+          colorPresetBtns.forEach((b) => {
+            b.className = 'color-preset-btn px-3 py-2.5 rounded-xl text-xs font-medium border border-slate-700 bg-slate-800/80 text-slate-300 hover:bg-slate-800 flex items-center justify-center gap-2 transition cursor-pointer';
+          });
+          btn.className = 'color-preset-btn px-3 py-2.5 rounded-xl text-xs font-medium border border-amber-400 bg-amber-500/15 text-amber-200 flex items-center justify-center gap-2 transition cursor-pointer';
+        });
+      });
+
+      // Peak Brightness / Opacity Slider
+      brightnessSlider.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value, 10);
+        state.peakOpacity = val / 100;
+        brightnessValue.textContent = `${val}%`;
+      });
+
+      // Carrier Frequency / Texture Presets
+      carrierPresetBtns.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.carrierType = btn.dataset.carrier;
+          configureCarrierSource();
+
+          carrierPresetBtns.forEach((b) => {
+            b.className = 'carrier-preset-btn px-3 py-2 rounded-xl text-xs font-medium border border-slate-700 bg-slate-800/80 text-slate-300 hover:bg-slate-800 text-left transition cursor-pointer';
+          });
+          btn.className = 'carrier-preset-btn px-3 py-2 rounded-xl text-xs font-medium border border-sky-400 bg-sky-500/15 text-sky-200 text-left transition cursor-pointer';
+        });
+      });
+
+      // Audio Volume Slider
+      volumeSlider.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value, 10);
+        state.volume = val / 100;
+        volumeValue.textContent = `${val}%`;
+        syncAudioOutput();
+      });
+
+      // Timer Duration Presets
+      timerPresetBtns.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const mins = parseInt(btn.dataset.minutes, 10);
+          state.selectedMinutes = mins;
+          state.remainingSeconds = mins * 60;
+          if (state.isRunning) {
+            state.lastTimerTick = performance.now();
+          }
+          renderTimerDisplay();
+
+          timerPresetBtns.forEach((b) => {
+            b.className = 'timer-preset-btn px-3 py-1.5 rounded-xl text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition cursor-pointer';
+          });
+          btn.className = 'timer-preset-btn px-3 py-1.5 rounded-xl text-xs font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/50 transition cursor-pointer';
+        });
+      });
+
+      // Keyboard Shortcuts (Space = Start/Pause, Esc = Show Controls / Stop)
+      window.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+        if (e.code === 'Space') {
+          e.preventDefault();
+          if (state.isRunning) {
+            pauseSession();
+          } else {
+            startSession();
+          }
+        } else if (e.code === 'Escape') {
+          if (state.controlsHidden) {
+            setControlsVisibility(true);
+          } else if (state.isRunning) {
+            pauseSession();
+          }
+        }
+      });
+
+      // Start the continuous diagnostic & visual render loop on load
+      window.addEventListener('load', () => {
+        renderTimerDisplay();
+        requestAnimationFrame(animationLoop);
+      });
+    })();
+  </script>
+</body>
+</html>
