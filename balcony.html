@@ -99,11 +99,16 @@
         <p class="detail peak-time" id="latest-time">Recorded at —</p>
       </article>
       <article class="metric">
+        <p class="label">Past 24 hours</p>
+        <strong class="value" id="past-24-hours">—<span class="unit">kWh</span></strong>
+        <p class="detail">Interval energy reported in the last 24 hours</p>
+      </article>
+      <article class="metric">
         <p class="label">Past week</p>
         <strong class="value" id="past-week">—<span class="unit">kWh</span></strong>
         <p class="detail">Interval energy reported in the last 7 days</p>
       </article>
-      <article class="metric wide">
+      <article class="metric">
         <p class="label">Past 12 months</p>
         <strong class="value" id="twelve-months">—<span class="unit">kWh</span></strong>
         <p class="detail">Interval energy reported in the last 12 months</p>
@@ -177,12 +182,17 @@
       if (!feeds.length) throw new Error("No inverter readings were found in this channel.");
       feeds.sort((left, right) => Date.parse(left.created_at) - Date.parse(right.created_at));
       const now = Date.now();
+      const dayCutoff = now - 24 * 60 * 60 * 1000;
       const weekCutoff = now - 7 * 24 * 60 * 60 * 1000;
       const twelveMonthDate = new Date(now);
       twelveMonthDate.setFullYear(twelveMonthDate.getFullYear() - 1);
       const twelveMonthCutoff = twelveMonthDate.getTime();
       const latest = feeds[feeds.length - 1];
       const lifetimeWh = Number(latest.field7) || 0;
+      const dayWh = feeds.reduce((total, feed) => {
+        const time = Date.parse(feed.created_at);
+        return time >= dayCutoff && time <= now ? total + (Number(feed.field6) || 0) : total;
+      }, 0);
       const weekWh = feeds.reduce((total, feed) => {
         const time = Date.parse(feed.created_at);
         return time >= weekCutoff && time <= now ? total + (Number(feed.field6) || 0) : total;
@@ -197,6 +207,7 @@
       }, null);
       const onlineDates = new Set(feeds.map(feed => new Date(feed.created_at).toISOString().slice(0, 10)));
 
+      document.getElementById("past-24-hours").innerHTML = `${kwhFormat.format(dayWh / 1000)}<span class="unit">kWh</span>`;
       document.getElementById("past-week").innerHTML = `${kwhFormat.format(weekWh / 1000)}<span class="unit">kWh</span>`;
       document.getElementById("twelve-months").innerHTML = `${kwhFormat.format(twelveMonthWh / 1000)}<span class="unit">kWh</span>`;
       document.getElementById("lifetime").innerHTML = `${kwhFormat.format(lifetimeWh / 1000)}<span class="unit">kWh</span>`;
